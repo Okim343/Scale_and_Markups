@@ -1,0 +1,136 @@
+paths:
+  bundle_dir: ../../03_Empirical/01_industry_alpha/03_outdata
+  out_results_dir: ../out_results
+  out_figs_dir: ../out_figs
+
+window:
+  primary: [2010, 2019]
+  active: primary
+
+monte_carlo:
+  M: 10000
+  M_final: 100000
+  master_seed: 20260525
+
+parameters:
+  beta: 0.96               # discount factor from EMX
+  delta_K: 0.06            # capital depreciation rate from EMX
+  phi: 1.0                 # Frisch elasticity of labor supply, for welfare U(C, L) from EMX
+  H: 2500                  # per-sector slot pool (EMX Nmax); must exceed calibrated N
+                           # (kept above the N.hi=1000 ceiling; arrays are (M,H),
+                           #  so H drives per-eval memory/compute.
+                           #  H>N.hi leaves room for Poisson count realizations above
+                           #  the calibrated mean.)
+  # phi_v (gross-output value-added weight) and a (capital share of value added)
+  # are EXTERNAL primitives from the empirical bundle, consistent with the hybrid
+  # GNR-KLEMS alpha: phi_v = 1 - mean(melast)/mean(alpha_hybrid_sector_a) and
+  # a = the top-level KLEMS VA-weighted a_bar (aggregate_moments.a). They are NOT
+  # calibrated and not set here; the loader falls back to DEFAULT_PHI_V (~0.348)
+  # only for legacy bundles predating the phi_v export. The raw GNR
+  # gnr_elasticities.a_gnr / phi_v_gnr_raw are diagnostics only. See
+  # steady_state/model/pricing.py and io_bundle.Bundle.a.
+
+participation:
+  K_switch: 1
+  love_of_variety: off
+
+exposure:
+  uniform: true
+
+# NOTE: alpha-support shaping (winsorize -> mean-preserving RTS shrink -> clip)
+# now lives entirely in the empirical pipeline (Stage S5). The bundle ships the
+# final model-facing F(alpha); the solver samples it verbatim. To switch the
+# shrink variant/λ or the clip bound, edit 03_Empirical/01_industry_alpha/
+# 02_code/config.yaml (F_alpha.support_variant / shrink_lambda / alpha_clip)
+# and rerun S5->S8. There is no model-side `alpha_support` knob anymore.
+
+welfare:
+  M: 10000               # markets/sector for the welfare run; falls back to monte_carlo.M_final if null
+  panel_filename_me: sim_panel_2010_2019.parquet
+  panel_filename_pe: planner_panel_2010_2019.parquet
+  out_yaml: welfare_2010_2019.yaml
+
+solver:
+  market:                      # inner FP: joint (s, Y_im) at given X_market, (w, R)
+    tol: 1.0e-8
+    max_iter: 3000             # EMX sectors hold hundreds of firms; converges slower
+    damping: 0.2               # gentler damping needed for large nested-CES markets
+    newton_fallback_after: 50  # iterations of damped FP before trying Newton
+    backend: vectorized        # market-solve kernel: scalar | vectorized
+                               # scalar is the oracle; vectorized is bit-exact
+                               # on real data and ~2.4x faster (bench_backends.py)
+  parallel:                    # market-chunk process parallelism over the M axis
+    n_jobs: 10                  # process chunks for medium probes; avoid oversubscribing memory bandwidth
+    min_markets: 500           # keep tiny smoke/test runs serial
+    min_markets_per_job: 100   # lower bound on chunk size
+  sector_fp:                   # middle FP: (P_i, X_i) per sector
+    tol: 1.0e-6
+    max_iter: 100
+    damping: 0.5
+  outer_fp:                    # economy FP: (w, R, C) under P=1, L=1
+    tol: 1.0e-6
+    max_iter: 50
+
+calibration:
+  # Which empirical cost base the pure-markup moment mu_cw is fit to:
+  #   sga  -> SG&A-inclusive aggregate markup mu_cw_sga (~1.18), the primary
+  #           target.
+  #   cogs -> COGS-only accounting markup (~1.44), kept as a robustness target.
+  # NOTE on names: the model's mu_cw IS the pure cost-weighted markup
+  # (Sigma TC*mu / Sigma TC) and is the calibration residual. The accounting
+  # object sales / true variable cost (= cost-weighted mu/alpha) is named
+  # mu_cw_alpha and is reported as a diagnostic only. (mu_cw_sga is the
+  # empirical data-file key for the SG&A-inclusive target.)
+  markup_target: sga
+  eta:
+    init: 1.53655           # warm start from job 4382852 best iterate (was 1.90004)
+    lo: 1.01
+  xi:                       # Pareto productivity tail index (concentration knob)
+    lo: 1.05
+    hi: 60.0                # bumped 30->60; prev run pinned xi at the 30 ceiling
+  N:                        # Poisson mean firms per sector (EMX exogenous entry)
+    lo: 5.0
+    hi: 1000.0              # cap runtime/memory; higher N is too expensive
+                            # (requires parameters.H > this; see H above)
+  rho_bar:                  # calibrated alpha-v rank-copula strength
+    lo: 0.0
+    hi: 0.95
+  inner:
+    method: trf
+    tol: 1.0e-5
+    max_nfev: 40
+  weights:
+    # EMX (2022) Cournot calibration weighting. EMX weight the AGGREGATE MARKUP
+    # far above concentration so a single within-sector elasticity (their gamma,
+    # our gamma) is pinned by the markup and CR4/CR20 are best-effort — this is
+    # how they avoid the markup-vs-concentration "double-duty" fight (see
+    # 00_ARCHIVE/.../Tables/Cournot/objective.m:130,175-184).
+    #   EMX squared-error weights: markup=100, slope=10, CR4=CR20=intsh=1.
+    # EMX apply weights in SQUARED-error space (weights'*resid.^2); our solver
+    # multiplies the RESIDUAL (least_squares then squares it), so to reproduce
+    # the same relative emphasis our weights are the sqrt: mu_cw=10, emx_slope=
+    # sqrt(10)=3.162, cr4=cr20=1.
+    # top1pct/top5pct are NOT used by EMX — disabled
+    # here via weight 0 (kept in the dict so they are still computed/reported in
+    # fit.moments and can be re-enabled by restoring a positive weight).
+    # RESIDUAL NORMALIZER: residuals are scaled by (1 + |target|), matching EMX's
+    # ./(1 + moment_data) (objective.m:183), NOT by |target|. The (1+|.|) form keeps
+    # all normalizers O(1-2) so the markup weight actually dominates and CR4/CR20 are
+    # best-effort; |target| would re-amplify the small-magnitude concentration
+    # moments and undo the emphasis. See calibration/inner.py residual().
+    # corr_alpha_log_sales targets the RAW empirical corr(alpha, log sales)=0.596.
+    # rho_bar is now calibrated as the dedicated alpha-v copula parameter; the
+    # partial corr(alpha, log sales | z_diag)=0.570 is reported as an untargeted
+    # overidentification diagnostic.
+    pooled: {mu_cw: 10.0, cr4: 1.0, cr20: 1.0, top1pct: 0.0, top5pct: 0.0, emx_slope: 3.162, corr_alpha_log_sales: 3.162}
+
+initial_values:
+  # Anchored-MC warm start. v_min is solved inside the baseline market GE, not
+  # configured or calibrated.
+  xi_default: 4.28627
+  N: 149.586
+  gamma: 5.21759
+  eta: 1.5499
+  rho_bar: 0.6   # bumped 0.22->0.6: median anchor gives rho_bar traction, and
+                 # corr(+0.596) wants rho_bar~0.9 at these elasticities, so start
+                 # closer (see 02_Drafts/md_files/scale_issue_experiments.md).

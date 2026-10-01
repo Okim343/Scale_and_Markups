@@ -1,0 +1,117 @@
+# =============================================================================
+# Config for the Hubmer/GNR pooled firm-year RTS estimation pipeline.
+# Source of truth: 02_Drafts/md_files/hubmer_rts_implementation.md
+#
+# All relative paths are resolved against the project root
+# (Scale_and_Markups_static_v2/).
+# =============================================================================
+
+pipeline_version: "0.1.0"
+
+# --- Input -------------------------------------------------------------------
+input:
+  # Curated Compustat panel with deflated variables (recommended v1 source).
+  # Use the broad firm-year universe. The QJE cost-share trim used for
+  # aggregate markup construction is intentionally not imposed before GNR.
+  source: "03_Empirical/01_industry_alpha/00_indata/03_Compustat/data_main_upd_trim_1.dta"
+
+# --- Variable mapping (chosen v1 mapping, fixed by the plan) ------------------
+mapping:
+  id: gvkey            # firm identifier
+  year: year           # fiscal-year panel variable in the curated file
+  ind: ind2d           # 2-digit NAICS
+  revenue: sale_D      # r = log(sale_D)
+  capital: capital_D   # k = log(capital_D)
+  materials: cogs_D    # m = log(cogs_D)
+  labor: emp           # l = log(emp)
+  wage_bill: xlr_D     # w = log(xlr_D / emp), OPTIONAL in the baseline
+
+# --- Panel construction -------------------------------------------------------
+panel:
+  start_year: 1997           # broad post-1997 panel (plan: estimate broad, filter later)
+  require_wages: false       # baseline GNR does NOT require wages for identification
+  build_materials_alt1: true # m_alt1 = log(cogs_D - xlr_D) when positive (robustness)
+  min_raw_rows: 400000       # guardrail: catch accidental aggregation-trimmed inputs
+  min_post_start_rows: 200000
+  min_final_rows: 120000
+  # Optional subsampling for smoke tests (null = full sample).
+  sample_firms_frac: null
+  sample_seed: 12345
+
+# --- Trimming (mirrors est_gnr.m) ---------------------------------------------
+trimming:
+  # exp(s) = materials share of revenue must lie in this band (MATLAB sselectortwo).
+  share_bounds: [0.05, 0.95]
+  # Percentile trim on r, k, l, m, s (MATLAB mincut/maxcut; 1/100 trims the
+  # bottom 1% of each variable and nothing at the top).
+  pctile_mincut: 1
+  pctile_maxcut: 100
+  # Minimum observations per industry / per year in the trimmed sample.
+  ind_min_obs: 500
+  year_min_obs: 500
+
+# --- Step 1: NLS share regression (materials elasticity) -----------------------
+step1:
+  seed: 2020
+  n_workers: 10        # parallel multistart processes (1 = serial)
+  n_sobol: 6000        # Sobol pool size (MATLAB: gensobol(6000, ...))
+  n_starts: 100        # starting points drawn from the pool (before feasibility filter)
+  # Sobol box per parameter block (matches MATLAB):
+  #   intercept in [-2, 2]; 6 mid terms in [-0.5, 0.5]; last 3 in [-0.1, 0.1]
+  sobol_bounds:
+    intercept: [-2.0, 2.0]
+    mid: [-0.5, 0.5]
+    tail: [-0.1, 0.1]
+  n_ols_jitter: 20      # extra starts jittered around the OLS guess
+  ols_jitter_scale: 0.25
+  maxiter_local: 2000   # per-start L-BFGS-B iterations
+  maxfev_polish: 10000  # Nelder-Mead polish budget (MATLAB fminsearch MaxFunEvals)
+
+# --- Step 2: nested GMM (integration constant + productivity Markov process) ---
+step2:
+  seed: 1982
+  n_workers: 10
+  n_sobol: 500
+  n_starts: 100
+  sobol_bounds: [-1.0, 1.0]
+  wide_sobol_bounds: [-3.0, 3.0]
+  n_wide_starts: 50
+  economic_starts:
+    - [1.67857926, -1.51049733, -0.08923862, 0.01331914, 0.09286090]
+    - [1.0, -1.0, 0.0, 0.0, 0.0]
+  h2size: 4             # cubic Markov process (MATLAB h2size = 4)
+  maxiter_local: 1000
+  maxfev_polish: 10000
+  maxiter_polish: 5000
+
+# --- Post-processing ------------------------------------------------------------
+postprocess:
+  # Diagnostics-only band: RTS outside this range is flagged (not dropped).
+  rts_flag_range: [0.0, 3.0]
+
+# --- Export for the alpha pipeline ----------------------------------------------
+export:
+  # Window used for the sector-level naics_rts aggregation (continuity /
+  # diagnostics object). null = full estimation sample.
+  window: [2010, 2019]
+  # Copy firm_year_rts.parquet into
+  # 01_industry_alpha/00_indata/04_salgado_data/firm_year_rts.parquet.
+  # This is the intended integration point; 05_build_F_alpha.py auto-detects it.
+  publish_firm_year_to_alpha_pipeline: true
+  # SAFETY: by default we never overwrite the original Salgado naics_rts.csv.
+  # The GNR sector aggregation is written as naics_rts_gnr.csv instead.
+  # Setting this to true backs up the original (timestamped) and overwrites it.
+  overwrite_legacy_naics_rts: false
+
+# --- Alpha-omega correlation (stage 05; produces the moment only) -------------
+alpha_omega_corr:
+  min_firms_per_sector: 30
+  winsor_pct: [0.01, 0.99]
+
+# --- Output locations ------------------------------------------------------------
+output:
+  intermediary_dir: "03_Empirical/00_Hubmer_RTS/02_intermediary"
+  outdata_dir: "03_Empirical/00_Hubmer_RTS/03_outdata"
+
+# --- Logging ----------------------------------------------------------------------
+log_level: INFO

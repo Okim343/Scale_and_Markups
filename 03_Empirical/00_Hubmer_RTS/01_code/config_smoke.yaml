@@ -1,0 +1,89 @@
+# =============================================================================
+# Smoke-test config for the GNR RTS pipeline.
+#
+# Identical economic design to config.yaml but:
+#   - subsamples 5% of firms,
+#   - uses far fewer multistart points,
+#   - writes to dedicated smoke/ directories,
+#   - never publishes anything to the alpha pipeline.
+#
+# Run each stage with:  python 0X_<stage>.py --config config_smoke.yaml
+# =============================================================================
+
+pipeline_version: "0.1.0-smoke"
+
+input:
+  source: "03_Empirical/01_industry_alpha/00_indata/03_Compustat/data_main_upd_trim_1.dta"
+
+mapping:
+  id: gvkey
+  year: year
+  ind: ind2d
+  revenue: sale_D
+  capital: capital_D
+  materials: cogs_D
+  labor: emp
+  wage_bill: xlr_D
+
+panel:
+  start_year: 1997
+  require_wages: false
+  build_materials_alt1: true
+  sample_firms_frac: 0.05
+  sample_seed: 12345
+
+trimming:
+  share_bounds: [0.05, 0.95]
+  pctile_mincut: 1
+  pctile_maxcut: 100
+  # Relaxed thresholds: the 5% subsample would otherwise drop most industries.
+  ind_min_obs: 50
+  year_min_obs: 50
+
+step1:
+  seed: 2020
+  n_workers: 4        # parallel multistart processes (1 = serial)
+  n_sobol: 512
+  n_starts: 8
+  sobol_bounds:
+    intercept: [-2.0, 2.0]
+    mid: [-0.5, 0.5]
+    tail: [-0.1, 0.1]
+  n_ols_jitter: 5
+  ols_jitter_scale: 0.25
+  maxiter_local: 500
+  maxfev_polish: 2000
+
+step2:
+  seed: 1982
+  n_workers: 4
+  n_sobol: 128
+  n_starts: 8
+  sobol_bounds: [-1.0, 1.0]
+  wide_sobol_bounds: [-3.0, 3.0]
+  n_wide_starts: 4
+  economic_starts:
+    - [1.67857926, -1.51049733, -0.08923862, 0.01331914, 0.09286090]
+    - [1.0, -1.0, 0.0, 0.0, 0.0]
+  h2size: 4
+  maxiter_local: 200
+  maxfev_polish: 2000
+  maxiter_polish: 1000
+
+postprocess:
+  rts_flag_range: [0.0, 3.0]
+
+export:
+  window: [2010, 2019]
+  publish_firm_year_to_alpha_pipeline: false   # NEVER publish smoke outputs
+  overwrite_legacy_naics_rts: false
+
+alpha_omega_corr:
+  min_firms_per_sector: 10
+  winsor_pct: [0.01, 0.99]
+
+output:
+  intermediary_dir: "03_Empirical/00_Hubmer_RTS/02_intermediary/smoke"
+  outdata_dir: "03_Empirical/00_Hubmer_RTS/03_outdata/smoke"
+
+log_level: INFO

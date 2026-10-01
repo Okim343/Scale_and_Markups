@@ -1,0 +1,21 @@
+name: scale_markups
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - scipy
+  - pandas
+  - pyarrow
+  - pyyaml
+  - matplotlib
+  - python-graphviz
+  - numba
+  - joblib
+  - statsmodels
+  - tqdm
+  - jupyterlab
+  - pip:
+      - sequence-jacobian

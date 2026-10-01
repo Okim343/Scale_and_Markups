@@ -1,0 +1,120 @@
+# =============================================================================
+# Master config for the POOLED finite-market calibration pipeline.
+#
+# The bundle this pipeline emits has NO sector dimension as a model index.
+# NAICS2 is calibration DATA only: it is the empirical "market" unit at which
+# within-market concentration and the (retained) emx_slope regression are
+# measured. The structural model (04_Code/steady_state) consumes pooled scalars
+# and a single pooled scalability distribution F(alpha).
+#
+# Downstream scripts (Stages S1, S2, S4, S5, S7, S8, S8b) read this file via
+# utils.load_config().
+# =============================================================================
+
+# --- Pipeline version (bumped manually on schema or moment changes) ---
+# 0.2.0 — natively pooled bundle (sector_table dropped; pooled scalars + single
+#         pooled F(alpha)).
+# 0.3.0 — hybrid GNR-KLEMS alpha: F(alpha) and the copula are built from
+#         alpha_hybrid_sector_a (Stage S4b); the raw GNR lelast/alpha_gross_output
+#         are diagnostic-only. phi_v/a switch to the hybrid-consistent pair.
+pipeline_version: "0.3.0"
+
+# --- Time aggregation -------------------------------------------------------
+# The active window controls which years downstream stages aggregate over.
+# Stage S1 retains everything from `s1_keep_from_year` onward; downstream
+# stages filter to `active_window` so robustness windows can be re-run
+# without re-running S1.
+s1_keep_from_year: 1997
+windows:
+  primary:   {start: 2010, end: 2019}
+  robust_a:  {start: 2000, end: 2019}
+  robust_b:  {start: 1997, end: 2023}
+active_window: primary
+
+# --- NAICS2 inclusion -------------------------------------------------------
+# Drop list:
+#   52 finance, 53 real estate, 62 healthcare, 81 other services,
+#   92 public administration, 99 unclassified,
+#   49 transportation support  (μ_cw_49 < 1 inconsistent with Cournot, public-firm
+#       sample is only 8–11 firms in the 2010–2019 active window).
+naics_exclude: [49, 52, 53, 62, 81, 92, 99]
+
+# --- Compustat markup trimming (Stage S1) -----------------------------------
+markup_trim:
+  hard_lower: 0.1        # drop obvious measurement error
+  hard_upper: 10.0       # drop obvious measurement error
+  winsor_pct: [0.01, 0.99]  # within-year winsorization on the remaining sample
+  apply_winsor: true
+
+# --- Capital share (Stage S4) -----------------------------------------------
+# a_iy = 1 - LS_VA per KLEMS NAICS2 group, clipped. The pooled scalar `a` the
+# model consumes is the VALUE-ADDED-weighted aggregate across retained KLEMS
+# groups (Stage S8), matching model.typ Panel A ("KLEMS aggregate, fallback 1/3").
+a_i_fallback: 0.333         # neutral fallback when a KLEMS group is missing
+a_i_clip: [0.05, 0.7]
+
+# --- Pooled scalability distribution F(alpha) (Stage S5) --------------------
+# A SINGLE pooled distribution, NOT binned by NAICS2 (model.typ Panel B:
+# "pooled scalability distribution; firm-level returns to scale, not binned by
+# NAICS2"). Built from the pooled empirical CDF of firm-level alpha
+# (00_Hubmer_RTS GNR estimates, firm_year_rts.parquet), pooled across ALL
+# retained NAICS2 firms in the active window, then discretized to `n_nodes`
+# equal-mass support points at u_k = (k-0.5)/N.
+#
+# F(alpha) is built winsorize -> shrink -> clip (the single standard). The
+# shipped `alpha` column IS the model-facing support: the solver samples it
+# directly with no further transform. alpha_clip is the structural
+# model/pool.py draw_pool range; do NOT revert to the legacy per-sector [0.5, 1.3].
+F_alpha:
+  # Model-facing firm-level scalability object built in Stage S4b:
+  #   alpha_hybrid_sector_a = melast + kelast + kelast*(1 - a_sector)/a_sector.
+  # The raw GNR alpha_gross_output (= melast+kelast+lelast) is diagnostic-only.
+  alpha_col: alpha_hybrid_sector_a
+  # Collapse firm-years to one unit per firm (window-mean alpha) before taking
+  # pooled quantiles — F(alpha) is a cross-section over FIRMS (permanent
+  # scalability types). "firm_year" keeps the pooled firm-year cross-section as
+  # a robustness option (overweights long-lived firms, inflates dispersion with
+  # transitory/estimation noise).
+  collapse: firm_mean         # firm_mean | firm_year
+  n_nodes: 500                # equal-mass support points
+  winsor_pct: [0.01, 0.99]    # pooled winsorization of alpha before quantiles
+  # Mean-preserving RTS-dispersion shrink applied to the node support BEFORE the
+  # clip. λ=0.371 is a compromise discipline from Salgado et al.: it shrinks the
+  # noisy KLEMS-imputed hybrid-alpha dispersion while preserving the empirical
+  # upper-tail feature that some firms have RTS above one (Table I P99 ≈ 1.08).
+  #   rts_shrunk    -> alpha_shrunk = mean + shrink_lambda*(alpha - mean)
+  #   full_compustat -> unshrunk (robustness; rerun S5 to switch)
+  support_variant: rts_shrunk
+  shrink_lambda: 0.371
+  # Lower clip 0.60 is an admissible numerical/economic support floor, justified
+  # by Salgado et al.'s lowest reported industry-average RTS (0.59, Healthcare).
+  # Do not interpret it as targeting Salgado's firm-level lower tail; the shrink
+  # is disciplined by the upper-tail feature, while the lower bound is a
+  # conservative floor consistent with the lowest reported industry average.
+  alpha_clip: [0.6, 1.20]     # model-admissible support (pool.py draw_pool)
+  min_obs: 100                # hard error if fewer pooled firm units than this
+
+# --- Gaussian-copula α–z alignment (Stage S8) -------------------------------
+# The fixed, ex-ante correlation ρ̄ between firm-level α (normal score) and the
+# latent capability z. Read from the Hubmer-RTS pipeline's pooled within-sector
+# α–ω rank correlation and published into aggregate_moments.yaml as
+# `alpha_z_copula_rho_bar`. The solver derives the loading ρ_z = σ_z·ρ̄/√(1−ρ̄²)
+# (model.typ eq:rho_loading); ρ_z is NOT calibrated.
+#   enabled: true  -> require the source JSON (error if missing); publish ρ̄.
+#            false -> do not publish ρ̄ (solver then errors unless told ρ̄ else).
+alpha_z_copula:
+  enabled: true
+  # Recomputed on the hybrid alpha (Stage S6). The legacy GNR-side
+  # 00_Hubmer_RTS/03_outdata/alpha_omega_corr.json is preserved as a diagnostic
+  # but is no longer consumed by the bundle.
+  source: 03_Empirical/01_industry_alpha/03_outdata/alpha_omega_corr_hybrid.json
+  key: implied_gaussian_copula_rho
+
+# --- Monte Carlo settings (read by the solver, not the empirical pipeline) --
+mc:
+  markets_calibration: 10000
+  markets_reporting:   100000
+  seed: 20260522
+
+# --- Logging ----------------------------------------------------------------
+log_level: INFO

@@ -64,8 +64,10 @@
 + Write Conclusion
 + Add abstract
 
-*Research question:* _How does capability-scalability sorting shape endogenous
-          markups and their aggregate welfare cost ?_
+*Research question:* _How does capability-scalability sorting shape endogenous markups and their aggregate welfare cost ?_
+
+#colbreak()
+
 #v(0.5cm)
 = Proto-Introduction
 #v(0.2cm)
@@ -627,7 +629,7 @@ Note that reading this amplification as evidence that sorting is harmful would b
 
 Compared to dispersion, the level leg is far less dependent on sorting, with sorting accounting for $34.6%$ of $Delta_"level"$ and the common-$alpha$ term for $50.2%$, the largest of the three. Interestingly, however, $lambda_"level"$ still falls by more than a third when $alpha$ is shuffled, from $27.18%$ to $17.04%$, although the aggregate wedge $macron(mu) - 1$ that the uniform-markup allocation preserves only falls from $0.184$ to $0.174$ (Panel A). A potential cause could stem from the same capital margin as in Lens A, since removing a given aggregate wedge frees more capital when the most scalable technologies sit in the most capable firms, but I have not isolated this channel. Therefore, the cost of a given markup level depends on the technologies that sit behind it, which is the common thread across the four legs that I take up in the synthesis.
 
-
+#v(0.3cm)
 *Full effect. * Ranked by the sorting share of their $Delta$, the four legs run from dispersion ($91%$) through reallocation ($47%$) and scale ($41%$) to level ($35%$), with sorting at $42%$ of $Delta_"total"$, as reported in Panel C of @tab:sorting. These findings make a strong case for the idea the cost of market power depends on which technologies carry the wedges, since at the same marginal distributions and with an aggregate wedge $macron(mu) - 1$ that differs by only $0.01$, the pairing of scalability with capability alone moves $lambda_"total"$ from $17.4%$ to $31.9%$. A potential critique is that the welfare impact is merely rising linearly in corr$(alpha, nu)$ from -1 to 1. To investigate this potential issue, I map out this nonlinearity by adding intermediate arrangements randomly shuffling $alpha$ among a fraction of active firms within each sector: $20%$, $40%$, $60%$, and $80%$ starting from the baseline, and $33%$ and $67%$ starting from reverse sorting. Each permutation preserves the sectoral distributions of scalability and capability, the active set, and the baseline parameters. I display the resulting relationship in @fig:sorting_convexity in the Appendix, making sure to re-solve all four allocations and calculate the welfare legs so that all points in the figure are solved economies plotted at their realized corr$(alpha, nu)$.
 
 The points show that welfare costs rise slowly over negative correlations and much faster over positive correlations. The shuffled arrangement sits $52%$ of the way between the endpoints in correlation, but only $9%$ to $18%$ of the way in welfare cost. Thus, increasing correlation matters much more when it strengthens positive sorting than when it weakens negative sorting. This is the sense in which the relationship appears convex: the positive branch has a steeper slope, although it is approximately linear and the figure does not establish an exact threshold at zero. This result shows clearly that the impact of positive sorting between $alpha$ and $nu$ is the real force behind the results above, not merely an increasing correlation.

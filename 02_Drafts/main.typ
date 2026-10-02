@@ -2,7 +2,7 @@
 
 #show: paper.with(
   meta: (
-    title: [How costly are Scalable Markups?],
+    title: [Market Power and the Scalability of Firms],
     authors: (
       (
         name: "Enrico Truzzi",

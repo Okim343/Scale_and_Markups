@@ -113,3 +113,30 @@ def _assert_marginals_preserved(
             raise AssertionError(
                 f"permute_alpha changed the active-alpha multiset in sector {m}"
             )
+
+
+def partial_permute(draw: PoolDraw, base_mode: str, q: float,
+                    rng: np.random.Generator | int | None = None) -> PoolDraw:
+    """Shuffle round(q*n) active slots within each sector of identity/reverse.
+
+    Alpha and its rank score move together. Inactive slots, capability, and
+    participation are unchanged. q=0 exactly returns the chosen base assignment.
+    """
+    if base_mode not in ("identity", "reverse"):
+        raise ValueError("base_mode must be identity or reverse")
+    if not np.isfinite(q) or not 0 <= q <= 1:
+        raise ValueError("q must be finite and in [0, 1]")
+    base = permute_alpha(draw, base_mode)
+    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
+    alpha, tilde = base.alpha.copy(), base.tilde_alpha.copy()
+    for m, mask in enumerate(base.active_mask):
+        active = np.flatnonzero(mask)
+        n = round(q * len(active))
+        if n < 2:
+            continue
+        dest = gen.choice(active, size=n, replace=False)
+        src = gen.permutation(dest)
+        alpha[m, dest] = base.alpha[m, src]
+        tilde[m, dest] = base.tilde_alpha[m, src]
+    _assert_marginals_preserved(alpha, draw.alpha, base.v, draw.v, draw.active_mask)
+    return dataclasses.replace(base, alpha=alpha, tilde_alpha=tilde)

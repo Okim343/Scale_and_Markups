@@ -1,52 +1,76 @@
-#import "@preview/nth:1.0.1": *
-#import "@preview/muchpdf:0.1.0": muchpdf
-#import "@preview/mitex:0.2.5": *
+#import "@preview/ssrn-scribe:0.10.1": paper
 
-
-#set text(
-  font: "New Computer Modern"
+#show: paper.with(
+  meta: (
+    title: [How costly are Scalable Markups?],
+    authors: (
+      (
+        name: "Enrico Truzzi",
+        affiliation: "Universitat Pompeu Fabra",
+        email: "enrico.truzzi@upf.edu",
+      ),
+    ),
+    abstract: [#h(1.5em)Standard oligopoly models assign every firm the same returns to scale, such that firms differ in productivity but not in how easily they can grow. This paper studies how the sorting between capability and scalability shapes endogenous markups and their aggregate welfare cost. I build a nested-CES Cournot economy in the spirit of #cite(<edmond2023costly>, form: "prose"), where firm-level returns to scale are disciplined externally by gross-output production-function estimates for Compustat firms, and where the alignment between scalability and capability is calibrated to the observed correlation between returns to scale and log sales ($0.596$). In the calibrated economy, moving from the market to the efficient allocation yields a consumption-equivalent gain of $31.9%$, most of which comes from the aggregate scale of production rather than from the reallocation of a given stock of inputs. Holding both marginal distributions fixed, randomly reassigning scalability across firms lowers this cost to $17.4%$, with sorting accounting for $42%$ of the total loss and for $91%$ of the loss due to markup dispersion. Additionally, I find that the welfare cost rises far faster with the correlation over positive than over negative values. Therefore, the cost of market power depends on which technologies carry the markup wedge, since a given wedge is more distortionary when it sits on firms that can expand output at little additional cost.],
+    date: datetime.today().display("[month repr:long] [day padding:none], [year]"),
+    keywords: [Markups, Returns to scale, Scalability, Sorting, Market power, Misallocation, Oligopoly],
+  ),
+  theme: (
+    font: "New Computer Modern",
+    heading-font: "New Computer Modern",
+  ),
+  layout: (
+    maketitle: true,
+    // The template leaves the abstract box (86% wide) left-aligned, which
+    // looks off-centre; full text width keeps it flush with the margins.
+    cover-text-width: 100%,
+    cover-spacing: 28pt,
+    frontmatter-gap: 12pt,
+    density: "balanced",
+    // No extra gap between paragraphs (same as the line leading); paragraphs
+    // are separated by the first-line indent only.
+    body-paragraph-spacing: 0.62em,
+    // LaTeX-style indent: the first paragraph after a heading (or after an
+    // equation, figure, or spacing) is not indented, later ones are.
+    body-first-line-indent: (amount: 1.5em, all: false),
+  ),
 )
 
-#set heading(numbering: "1.1 ")
-#show link: text.with(fill: blue)
-
-#show link: underline
-#set page(numbering: "1 / 1")
-#set math.equation(numbering: "(1)")
+// Document-level rules carried over from model.typ.
 #set math.vec(gap: 1em)
 #set figure.caption(position: top)
+// Keep the previous 1.2em breathing room around display equations and
+// figures, which otherwise inherit the (now tight) paragraph spacing.
+#show math.equation.where(block: true): set block(spacing: 1.2em)
+#show figure: set block(spacing: 1.2em)
 
+// Equation references render as the bare number, e.g. "Equation (3)" is written
+// in the text as "Equation @eq:...".
 #show ref: it => {
   let eq = math.equation
   let el = it.element
   if el != none and el.func() == eq {
-    // Override equation references.
-    link(el.location(),numbering(
+    link(el.location(), numbering(
       el.numbering,
       ..counter(eq).at(el.location())
     ))
   } else {
-    // Other references as usual.
     it
   }
 }
-#set document(
-  title: [How costly are Scalable Markups?]
-) 
-#title()
 
 *TODO:*
 
-+ Add Welfare results and interpretation
 + Clean Introduction and add literature relationship
++ Write Conclusion
++ Add abstract
 
-*Research question:* _How does capability-scalability sorting shape endogenous 
+*Research question:* _How does capability-scalability sorting shape endogenous
           markups and their aggregate welfare cost ?_
 #v(0.5cm)
 = Proto-Introduction
 #v(0.2cm)
 
-Classic oligopoly models typically assign every firm the same returns-to-scale parameters, so firms differ in productivity but not in how easily they can scale. With heterogenous RTS, capability and scalability jointly determine equilibrium size, and, under oligopoly, size determines markups. I argue that the sorting between productivity (here refered to as capability) and scalability , and not only their absolute value, plays a major role in shaping the aggregate welfare costs of market power. That is, the 
+Classic oligopoly models typically assign every firm the same returns-to-scale parameters, so firms differ in productivity but not in how easily they can scale. With heterogenous RTS, capability and scalability jointly determine equilibrium size, and, under oligopoly, size determines markups. I argue that the sorting between productivity (here refered to as capability) and scalability , and not only their absolute value, plays a major role in shaping the aggregate welfare costs of market power. That is, the
 
 The quantitative environment is an EMX-style sector oligopoly model with heterogeneous market exposure and finite-firm competition inside product markets. One simulated unit is one sector, and one sector is one nested-CES Cournot market. Markups are equilibrium outcomes,where more concentrated sectors generate larger firm market shares, and larger market shares relax perceived demand elasticities, raising markups. The model combines that endogenous-market-power mechanism with externally disciplined heterogeneity in returns to scale. The hypothesis is that a given markup wedge is more distortionary when it is attached to a firm that can absorb large quantities with only a limited increase in cost.
 
@@ -54,6 +78,7 @@ The paper is designed as a structural welfare exercise. Returns to scale are dis
 
 #v(0.5cm)
 = The Model
+#v(0.2cm)
 == Households
 #v(0.2cm)
 
@@ -139,7 +164,7 @@ Equation @eq:marginal_cost makes the role of scalability transparent. The scale 
 #v(0.3cm)
 
 *Pricing and profits.* Conditional on demand, the equilibrium pricing condition is
-#math.equation(block:true, $p_(j i,t) = mu_(j i,t) M C_(j i,t)(y_(j i,t)).$)<eq:pricing> 
+#math.equation(block:true, $p_(j i,t) = mu_(j i,t) M C_(j i,t)(y_(j i,t)).$)<eq:pricing>
 Profits can then be written as
 #math.equation(block:true, $d_(j i,t) = p_(j i,t) y_(j i,t) - T C_(j i,t)(y_(j i,t)) = (1 - alpha_(j i) / mu_(j i,t)) p_(j i,t) y_(j i,t).$)<eq:profits>
 Together, @eq:firm_demand, @eq:emx_markup, and @eq:pricing form a fixed-point system inside each market: quantities determine shares, shares determine markups, and markups feed back into prices and quantities through marginal cost.
@@ -178,8 +203,8 @@ Aggregate accounting closes because gross sales equal $P_t Q_t$, variable cost e
 == Planner's Allocation and Welfare<sec:planner_welfare>
 #v(0.2cm)
 
-*Planner Problem.*  The planner faces the same technology, the same exogenous sector firm sets, and the same distributions of scalability and latent capability. 
-The difference is that the planner does not treat markup pricing as a technological constraint. Instead, the planner allocates labor, capital services, 
+*Planner Problem.*  The planner faces the same technology, the same exogenous sector firm sets, and the same distributions of scalability and latent capability.
+The difference is that the planner does not treat markup pricing as a technological constraint. Instead, the planner allocates labor, capital services,
 materials, and output so as to maximize household welfare subject only to feasibility, the production technology, and the same allocated firms. Formally, conditional on the producing firm set $A_(j,t)$ in each market, the planner chooses sequences
 #math.equation(block:true, numbering: none, ${C_t, Y_(j,t), y_(j i,t), l_(j i,t), k_(j i,t), m_(j i,t)}_(t>=0)$)
 to maximize
@@ -217,18 +242,21 @@ not local approximations.
 *Four allocations.* Let us define $Delta W_"markup" = W_"Planner" (A) - W_"Market" (A)$
 for the baseline gap at fixed sector firm sets $A$#footnote[Because the static cross section has exogenous firm counts, the planner does not re-select firms, so the full EMX entry counterfactual is left outside the baseline welfare exercise. The rationale behind this omission is the EMX finding that the entry wedge is quantitatively small relative to the markup-level and misallocation channels.]. To decompose it, I insert two intermediate allocations between the market and the planner, each solved on
 the same draws $(alpha_(j i), nu_(j i))$, the same active set $A$, and the same frozen anchor $hat(y)$:
+#v(0.2cm)
 
-1. *Market* ($M E$): markup pricing @eq:pricing with $mu_(j i)$ from
++ *Market* ($M E$): markup pricing @eq:pricing with $mu_(j i)$ from
    @eq:emx_markup.
 
-2. *Planner* ($P E$): $mu_(j i) equiv 1$, capital free at @eq:euler_R.
-3. *Fixed-input planner* ($P E_I$): $mu_(j i) equiv 1$ with the aggregate
++ *Planner* ($P E$): $mu_(j i) equiv 1$, capital free at @eq:euler_R.
+
++ *Fixed-input planner* ($P E_I$): $mu_(j i) equiv 1$ with the aggregate
    capital stock pinned to its market value, $K = K^(M E)$. The required return
    is no longer the Euler rate: $R$ adjusts upward until aggregate capital
    demand is choked down to the market envelope. Because $R$ enters every
    firm's unit cost @eq:omega_gross, this genuinely re-prices the whole cross
    section rather than relabeling the planner allocation.
-4. *Uniform-markup* ($U$): every firm charges the common pure markup
+
++ *Uniform-markup* ($U$): every firm charges the common pure markup
    $mu_(j i) equiv macron(mu)$, where $macron(mu) = mu_("cw")^("model")$ is the
    market equilibrium's cost-weighted markup @eq:mu_cw_identity. The aggregate
    markup wedge is preserved by construction; only its cross-firm dispersion is
@@ -245,12 +273,13 @@ Both splits telescope, so
 #math.equation(block:true, $(1+lambda_"realloc")(1+lambda_"scale") = (1+lambda_"disp")(1+lambda_"level") = 1 + lambda_"total",$)<eq:lens_identity>
 or equivalently, in logs,
 #math.equation(block:true, $Delta_"realloc" + Delta_"scale" = Delta_"disp" + Delta_"level" = Delta_"total",$)<eq:lens_identity_log>
-with $lambda_"total"$ the object in @eq:ce_closed_form. 
+with $lambda_"total"$ the object in @eq:ce_closed_form.
 The two lenses are not nested: Lens A cuts the loss by which inputs move, Lens B by which wedges
 move. Because all four legs are chained through @eq:lambda_is_C_ratio, the additive shares $Delta_"realloc" slash Delta_"total"$ and
 $Delta_"disp" slash Delta_"total"$ are well defined and sum to one within each lens.
-
+#v(0.5cm)
 = Quantification
+#v(0.2cm)
 == Data and Measurement<sec:data>
 #v(0.2cm)
 
@@ -287,7 +316,7 @@ A more direct check would correlate $alpha$ with log TFPQ $ln hat(z)$ from the p
 == Pooled-Market Steady State<sec:steady_state>
 #v(0.2cm)
 
-I now characterize the steady state as a nested system. Time subscripts are dropped, the aggregate price index is normalized to $P = 1$, and the distorted market steady state is written under the labor normalization $L = 1$. The resulting equilibrium is then used to pin down the labor-disutility weight $chi$, after which the market and planner steady states can be compared in common units. The steady-state analysis is deliberately written at the generic sector-market level, as is common in the literature. 
+I now characterize the steady state as a nested system. Time subscripts are dropped, the aggregate price index is normalized to $P = 1$, and the distorted market steady state is written under the labor normalization $L = 1$. The resulting equilibrium is then used to pin down the labor-disutility weight $chi$, after which the market and planner steady states can be compared in common units. The steady-state analysis is deliberately written at the generic sector-market level, as is common in the literature.
 
 #v(0.3cm)
 
@@ -321,13 +350,13 @@ using the market labor-leisure condition under $L = 1$ and $C = Q - M$. Once thi
 
 #v(0.3cm)
 
-*Frozen-anchor protocol.* The anchor $hat(y)$ and all firm draws $(alpha_(j i), nu_(j i))$ are fixed at the baseline and held frozen across the planner solve, the uniform-markup decomposition, and every counterfactual: technology is then an ordinary allocation-independent object, so the planner faces literally the same $T C_(j i,t)(y)$ as the market and re-anchoring under the planner is structurally impossible. This follows the logic of the normalized-CES literature #cite(<klump2000economic>), in which technology families are normalized to coincide at a common benchmark before varying curvature parameters. Our fixed-$hat(y)$ construction applies the same identification principle to heterogeneous returns to scale: all technologies agree on marginal cost at the reference output, so differences in $alpha$ affect only the curvature of marginal cost away from that operating point. I go beyond #cite(<klump2000economic>, form: "prose") by arguing that the benchmark must also be economically sensible, and the median is preferable to the sales-weighted mean in skewed distributions#footnote[See Appendix @anchor for a discussion of the difference.].
+*Frozen-anchor protocol.* The anchor $hat(y)$ and all firm draws $(alpha_(j i), nu_(j i))$ are fixed at the baseline and held frozen across the planner solve, the uniform-markup decomposition, and every counterfactual: technology is then an ordinary allocation-independent object, so the planner faces literally the same $T C_(j i,t)(y)$ as the market and re-anchoring under the planner is structurally impossible. This follows the logic of the normalized-CES literature #cite(<klump2000economic>), in which technology families are normalized to coincide at a common benchmark before varying curvature parameters. Our fixed-$hat(y)$ construction applies the same identification principle to heterogeneous returns to scale: all technologies agree on marginal cost at the reference output, so differences in $alpha$ affect only the curvature of marginal cost away from that operating point. I go beyond #cite(<klump2000economic>, form: "prose") by arguing that the benchmark must also be economically sensible, and the median is preferable to the sales-weighted mean in skewed distributions#footnote[See @anchor for a discussion of the difference.].
 
 #v(0.5cm)
 == Calibration<sec:calibration>
 #v(0.2cm)
 
-*Calibrated parameters.* In the pooled baseline the calibrated vector is $(xi, N, gamma, eta, macron(rho))$. The within-market elasticity $gamma$ controls the common substitution environment and helps pin the markup level through the SG&A-inclusive aggregate cost-weighted markup target $mu_("cw,sga")^("data") approx 1.18$. The across-market elasticity $eta$ governs cross-sector substitution and is disciplined by the EMX slope moment. The Pareto tail index $xi$ and the Poisson mean $N$ jointly discipline concentration, especially CR4 and CR20: $xi$ is now the tail of the cost shifter $nu$ (approximately $z^(1/alpha)$), which maps directly into the sales and concentration tail, while $N$ sets the mean number of firms in a sector. 
+*Calibrated parameters.* In the pooled baseline the calibrated vector is $(xi, N, gamma, eta, macron(rho))$. The within-market elasticity $gamma$ controls the common substitution environment and helps pin the markup level through the SG&A-inclusive aggregate cost-weighted markup target $mu_("cw,sga")^("data") approx 1.18$. The across-market elasticity $eta$ governs cross-sector substitution and is disciplined by the EMX slope moment. The Pareto tail index $xi$ and the Poisson mean $N$ jointly discipline concentration, especially CR4 and CR20: $xi$ is now the tail of the cost shifter $nu$ (approximately $z^(1/alpha)$), which maps directly into the sales and concentration tail, while $N$ sets the mean number of firms in a sector.
 
 The rank correlation $macron(rho)$ sets the strength of the $alpha$--$nu$ rank copula and is calibrated to the raw empirical correlation between $alpha$ and log sales, $+0.596$. Its sign is not at odds with the negative returns-to-scale--TFP correlation, $-0.253$, calibrated by #cite(<hubmer2025scalable>, form: "prose"). Theirs is defined on TFP $z$, which by @eq:relabel loads on $alpha$ directly, whereas $macron(rho)$ is defined on the anchored capability $nu$. The capability scale $underline(nu)$ is not part of the calibrated vector: it is solved by the baseline anchoring condition $tilde(y) = hat(y) equiv 1$, which centers the $alpha$-gradient at the operating scale rather than fighting the correlation moment. Objects treated as externally disciplined are the pooled scalability distribution $F^alpha$, the firm-level gross-output returns to scale $alpha_(j i)$, the value-added weight $phi.alt_v$, the common capital share $a$, and the exposure distribution $omega_j$. See @tab:param_ss for an overview of all parameters and their final calibration values.
 
@@ -335,7 +364,7 @@ The rank correlation $macron(rho)$ sets the strength of the $alpha$--$nu$ rank c
 #v(0.5cm)
 
 *Calibration targets.* The calibration targets are pooled scalars. Following EMX, the targets remain the SG&A-inclusive aggregate cost-weighted markup $mu_("cw,sga")^("data")$, CR4, CR20, and the EMX slope moment. Additionally, the raw correlation between $alpha$ and log sales, $+0.596$, is added as a primary target identifying $macron(rho)$. The model analogue of the markup target is #math.equation(numbering:none,block:true,$mu_("cw")^("model") = integral_0^1 sum_(i in A_j) lambda^c_(j i) mu_(j i) d j, quad lambda^c_(j i) equiv (T C_(j i))/(integral_0^1 sum_(h in A_j) T C_(j h) d j)$)
-, where $lambda^c_(j i)$ is firm $i$'s share of aggregate variable cost. With heterogeneous $alpha_(j i) < 1$, the reliable welfare cost is the equilibrium gap $Delta W_("markup")$ from the planner-vs-market solve, which the roundabout channel amplifies and markup dispersion across heterogeneous $alpha_(j i)$ further shapes. 
+, where $lambda^c_(j i)$ is firm $i$'s share of aggregate variable cost. With heterogeneous $alpha_(j i) < 1$, the reliable welfare cost is the equilibrium gap $Delta W_("markup")$ from the planner-vs-market solve, which the roundabout channel amplifies and markup dispersion across heterogeneous $alpha_(j i)$ further shapes.
 
 The model counterpart of the empirical $hat(b)$ target is the static sector-level regression of inverse cost-weighted markup on sector HHI, because model sectors have no persistent fixed effects. The cross-sector HHI variation this slope is identified off comes entirely from the Poisson draw in @eq:poisson_count: realized counts $n_j = |A_j|$ differ across simulated sectors, and sectors that happen to draw few firms are mechanically more concentrated.
 
@@ -391,8 +420,8 @@ Finally, the rank copula of $macron(rho) = 0.897$ is not the direct correlation 
 == Markup Distribution<sec:markup_dist>
 #v(0.2cm)
 
-*Compression relative to EMX.* I compare the distribution of markups in the calibrated economy presented here versus that of EMX since their framework is the closest reference point, despite the lack of heterogeneous returns-to-scale parameters, as discussed below. 
-The calibrated market economy generates a markup distribution that is far more compressed than that of EMX, both across sectors and across firms, as can be seen in @tab:markup_dist. At the firm level, the cost-weighted interquartile range goes from $1.170$ to $1.176$, against $1.09$ to $1.17$ in EMX. Additionally, the 99th percentile sits $0.17$ above the median, whereas the same gap in EMX is $0.46$, almost three times bigger. 
+*Compression relative to EMX.* I compare the distribution of markups in the calibrated economy presented here versus that of EMX since their framework is the closest reference point, despite the lack of heterogeneous returns-to-scale parameters, as discussed below.
+The calibrated market economy generates a markup distribution that is far more compressed than that of EMX, both across sectors and across firms, as can be seen in @tab:markup_dist. At the firm level, the cost-weighted interquartile range goes from $1.170$ to $1.176$, against $1.09$ to $1.17$ in EMX. Additionally, the 99th percentile sits $0.17$ above the median, whereas the same gap in EMX is $0.46$, almost three times bigger.
 
 From below, the compression comes from the low calibrated $gamma$, which lifts the common CES floor to $1.160$ and carries most of the markup level for the reasons discussed in @sec:calibration. From above, the markup behaves as a monotone increasing function of the market share by @eq:emx_markup, and the low concentration of the Compustat targets keeps the largest shares in check. Decreasing returns to scale are also potentially compressing the tail further, since with most of the mass of $F^alpha$ below one, marginal cost @eq:marginal_cost rises above the anchor at the rate $1 slash alpha_(j i) - 1$, a convex brake that bites the hardest on the largest firms#footnote[I have not isolated this channel with a constant-returns counterfactual, however, so it should be taken as a conjecture rather than as a result.].
 
@@ -439,11 +468,11 @@ From below, the compression comes from the low calibrated $gamma$, which lifts t
 == Welfare Cost of Markups<sec:welfare_baseline>
 #v(0.2cm)
 
-*Welfare Setup.* Using the framework described in @sec:planner_welfare, I decompose the welfare results into the two lenses A and B, and within each lens, I further break it down into reallocation and scale legs and  dispersion and level legs, respectively. The first lens (Lens A) and its decomposition aims at measuring the welfare impact of market power through a missallocation view, by holding inputs fixed a lá #cite(form: "prose", <hsieh2009misallocation>), while the second lens (Lens B) focuses on breaking down the welfare impact of the markup wedge into the dispersion wedge and the aggregate dispersion wedge, by holding the aggregate markup level fixed, similar to the exercise done by EMX. Later, I will explore the role of sorting between scalability and capability within each of these lenses and legs.  
+*Welfare Setup.* Using the framework described in @sec:planner_welfare, I decompose the welfare results into the two lenses A and B, and within each lens, I further break it down into reallocation and scale legs and  dispersion and level legs, respectively. The first lens (Lens A) and its decomposition aims at measuring the welfare impact of market power through a missallocation view, by holding inputs fixed a lá #cite(form: "prose", <hsieh2009misallocation>), while the second lens (Lens B) focuses on breaking down the welfare impact of the markup wedge into the dispersion wedge and the aggregate dispersion wedge, by holding the aggregate markup level fixed, similar to the exercise done by EMX. Later, I will explore the role of sorting between scalability and capability within each of these lenses and legs.
 
 #v(0.5cm)
 
-*Lens A.* Moving from the market to the planner allocation raises steady-state consumption from $60.63$ to $79.99$, which by @eq:lambda_is_C_ratio is a consumption-equivalent gain of $lambda_"total" = 31.9%$. Most of this gain comes from scale rather than from the reallocation of a given stock of inputs, as can be seen in Panel B of @tab:welfare_lenses under lens A: Holding the primary input at its market level, the fixed-input planner of @eq:lens_a recovers only $lambda_"realloc" = 5.8%$ ($20.2%$ of $Delta_"total"$), whereas letting capital adjust delivers the remaining $lambda_"scale" = 24.8%$ ($79.8%$ of $Delta_"total"$). 
+*Lens A.* Moving from the market to the planner allocation raises steady-state consumption from $60.63$ to $79.99$, which by @eq:lambda_is_C_ratio is a consumption-equivalent gain of $lambda_"total" = 31.9%$. Most of this gain comes from scale rather than from the reallocation of a given stock of inputs, as can be seen in Panel B of @tab:welfare_lenses under lens A: Holding the primary input at its market level, the fixed-input planner of @eq:lens_a recovers only $lambda_"realloc" = 5.8%$ ($20.2%$ of $Delta_"total"$), whereas letting capital adjust delivers the remaining $lambda_"scale" = 24.8%$ ($79.8%$ of $Delta_"total"$).
 
 The scale leg is a capital-accumulation margin, since with the markup wedge removed and the return pinned at @eq:euler_R, the planner operates a capital stock $2.14$ times that of the market. Conversely, when capital is held at $K^(M E)$, the rental rate that clears the capital market under efficient pricing rises from $0.102$ to $0.166$, about $63%$ above the Euler rate, which helps us understand how far the markup wedge holds accumulation below its efficient level.
 
@@ -494,7 +523,7 @@ The scale leg is a capital-accumulation margin, since with the markup wedge remo
 )<tab:welfare_lenses>
 #v(0.3cm)
 
-*Lens B.* Replacing every firm markup with the common markup $macron(mu) = 1.184$ removes dispersion while preserving the aggregate wedge, and by @eq:lens_b it is worth only $lambda_"disp" = 3.7%$ ($13.3%$ of $Delta_"total"$), such that the markup level accounts for the remaining $lambda_"level" = 27.2%$ ($86.7%$). This is the magnitude that the compressed distribution of @sec:markup_dist anticipates, and also a common finding in the literature #cite(<edmond2023costly>) #cite(<de2020rise>) #cite(<arkolakis2010market>). 
+*Lens B.* Replacing every firm markup with the common markup $macron(mu) = 1.184$ removes dispersion while preserving the aggregate wedge, and by @eq:lens_b it is worth only $lambda_"disp" = 3.7%$ ($13.3%$ of $Delta_"total"$), such that the markup level accounts for the remaining $lambda_"level" = 27.2%$ ($86.7%$). This is the magnitude that the compressed distribution of @sec:markup_dist anticipates, and also a common finding in the literature #cite(<edmond2023costly>) #cite(<de2020rise>) #cite(<arkolakis2010market>).
 
 Moving one, one might read the two small legs as two estimates of the same misallocation object, but that would be an incorrect interpretation, since they cut the loss along different margins. The reallocation leg removes all wedges with capital and labor fixed, whereas the dispersion leg keeps the level wedge but lets capital respond, and capital in the uniform-markup economy is $7.8%$ higher than in the market. Both lenses therefore place most of the loss on the aggregate scale of production and a fifth or less on the reallocation and dispersion legs, which leaves open what role the sorting of scalability onto capability plays in each of the four legs, the question I turn to in @sec:sorting.
 
@@ -514,11 +543,7 @@ where the first term is the common-$alpha$ loss, corresponding to a standard DRS
 
 In levels, however, most of the sorting term sits in the scale lef, with $0.0906$ of the $0.1167$ on the $Delta$ scale as visible in Panel C, since sorting raises the planner's capital stock from $1.70$ to $2.14$ times that of the market (Panel A). Under positive sorting, the largest firm of each sector combines the highest $alpha$ and $nu$ with the highest markup, and the planner raises its inputs $5.6$-fold against $1.6$-fold for the bulk of firms, such that these leaders, only $1.8%$ of active firms, absorb $47.5%$ of the additional inputs. Since their markup exceeds that of the rest by only $7.5$ log points, the wedge acts as a trigger rather than the source of this expansion, which comes instead from the strong output response of their scalable technologies, with $nu$ adding no predictive power once $alpha$ and the markup are accounted for.#footnote[This comes from a descriptive cross-firm regression of $ln(T C^(P E) slash T C^(M E))$ on $ln mu^(M E)$, $alpha$ and $ln nu$ with sector fixed effects, where total cost measures firm inputs since every input is a fixed fraction of it within a regime. The partial $R^2$ is $0.63$ for the markup, $0.22$ for $alpha$ and $0.01$ for $ln nu$, whose coefficient is negative, although the markup is itself an equilibrium outcome of $alpha$ and $nu$, so the regression ranks predictors rather than identifying a channel.]
 
-Note that reading this amplification as evidence that sorting is harmful would be an incorrect interpretation, since breaking sorting lowers consumption in every allocation of Panel A. Consumption falls from $60.63$ to $55.43$ in the market ($-8.6%$), from $64.12$ to $57.11$ in the fixed-input planner ($-10.9%$) and from $79.99$ to $65.08$ in the planner ($-18.6%$). Sorting is therefore productive, raising the cost of markups solely because the planner gains more from it than the market does, not because the absolute level falls (on the contrary). 
-
-*Lens B Decomposition: Dispersion $times$ Aggregate Level.* The dispersion leg, by contrast, depends almost entirely on sorting. Shuffling $alpha$ lowers $lambda_"disp"$ from $3.75%$ to $0.32%$, and reverse sorting or homogeneous $alpha$ bring it to essentially zero ($-0.01%$ and $0.02%$, respectively), as can be seen in Panel B of @tab:sorting. Sorting then accounts for a substantial $91.3%$ share of $Delta_"disp"$, against $8.3%$ for heterogeneity and $0.4%$ for the common-$alpha$ term (Panel C). Therefore, this result suggests that almost all of the welfare cost of markup dispersion found in @sec:welfare_baseline comes from the pairing of scalability with capability. This could potentially be explained by the fact that, under positive sorting, the firms with the highest markups are also the most scalable, and whose output responds the most to a price wedge since their marginal cost is the least convex due to high $alpha$. Since the markup tail is untargeted, the absolute size of $lambda_"disp"$ should be taken with a grain of salt, whereas its collapse across arrangements rests on the same draws and is less exposed to it.
-
-Compared to dispersion, the level leg is far less dependent on sorting, with sorting accounting for $34.6%$ of $Delta_"level"$ and the common-$alpha$ term for $50.2%$, the largest of the three. Interestingly, however, $lambda_"level"$ still falls by more than a third when $alpha$ is shuffled, from $27.18%$ to $17.04%$, although the aggregate wedge $macron(mu) - 1$ that the uniform-markup allocation preserves only falls from $0.184$ to $0.174$ (Panel A). A potential cause could stem from the same capital margin as in Lens A, since removing a given aggregate wedge frees more capital when the most scalable technologies sit in the most capable firms, but I have not isolated this channel. Therefore, the cost of a given markup level depends on the technologies that sit behind it, which is the common thread across the four legs that I take up in the synthesis.
+Note that reading this amplification as evidence that sorting is harmful would be an incorrect interpretation, since breaking sorting lowers consumption in every allocation of Panel A. Consumption falls from $60.63$ to $55.43$ in the market ($-8.6%$), from $64.12$ to $57.11$ in the fixed-input planner ($-10.9%$) and from $79.99$ to $65.08$ in the planner ($-18.6%$). Sorting is therefore productive, raising the cost of markups solely because the planner gains more from it than the market does, not because the absolute level falls (on the contrary).
 
 #v(0.3cm)
 #figure(
@@ -598,19 +623,30 @@ Compared to dispersion, the level leg is far less dependent on sorting, with sor
 )<tab:sorting>
 #v(0.3cm)
 
+*Lens B Decomposition: Dispersion $times$ Aggregate Level.* The dispersion leg, by contrast, depends almost entirely on sorting. Shuffling $alpha$ lowers $lambda_"disp"$ from $3.75%$ to $0.32%$, and reverse sorting or homogeneous $alpha$ bring it to essentially zero ($-0.01%$ and $0.02%$, respectively), as can be seen in Panel B of @tab:sorting. Sorting then accounts for a substantial $91.3%$ share of $Delta_"disp"$, against $8.3%$ for heterogeneity and $0.4%$ for the common-$alpha$ term (Panel C). Therefore, this result suggests that almost all of the welfare cost of markup dispersion found in @sec:welfare_baseline comes from the pairing of scalability with capability. This could potentially be explained by the fact that, under positive sorting, the firms with the highest markups are also the most scalable, and whose output responds the most to a price wedge since their marginal cost is the least convex due to high $alpha$. Since the markup tail is untargeted, the absolute size of $lambda_"disp"$ should be taken with a grain of salt, whereas its collapse across arrangements rests on the same draws and is less exposed to it.
 
-*Full effect. * Ranked by the sorting share of their $Delta$, the four legs run from dispersion ($91%$) through reallocation ($47%$) and scale ($41%$) to level ($35%$), with sorting at $42%$ of $Delta_"total"$, as reported in Panel C of @tab:sorting. This presents a good argument that the cost of market power therefore depends on which technologies carry the wedges, since at the same marginal distributions and with an aggregate wedge $macron(mu) - 1$ that differs by only $0.01$, the pairing of scalability with capability alone moves $lambda_"total"$ from $17.4%$ to $31.9%$. This dependence is also far from linear in the pairing. In @fig:sorting_convexity in the Appendix, the shuffled arrangement sits $52%$ of the way from reverse sorting to the baseline in corr$(alpha, nu)$, but only between $9%$ and $18%$ of the way in welfare cost, depending on the leg, such that almost all of the welfare movement happens on the positive-correlation half, with dispersion as the most convex leg. Finally, the common-$alpha$ economy recovers only $43.6%$ of $Delta_"total"$, although it is not recalibrated, so this share should not be read as the cost that a model without scalability heterogeneity would deliver after re-matching the targets of @sec:calibration.
-
-
-
+Compared to dispersion, the level leg is far less dependent on sorting, with sorting accounting for $34.6%$ of $Delta_"level"$ and the common-$alpha$ term for $50.2%$, the largest of the three. Interestingly, however, $lambda_"level"$ still falls by more than a third when $alpha$ is shuffled, from $27.18%$ to $17.04%$, although the aggregate wedge $macron(mu) - 1$ that the uniform-markup allocation preserves only falls from $0.184$ to $0.174$ (Panel A). A potential cause could stem from the same capital margin as in Lens A, since removing a given aggregate wedge frees more capital when the most scalable technologies sit in the most capable firms, but I have not isolated this channel. Therefore, the cost of a given markup level depends on the technologies that sit behind it, which is the common thread across the four legs that I take up in the synthesis.
 
 
+*Full effect. * Ranked by the sorting share of their $Delta$, the four legs run from dispersion ($91%$) through reallocation ($47%$) and scale ($41%$) to level ($35%$), with sorting at $42%$ of $Delta_"total"$, as reported in Panel C of @tab:sorting. These findings make a strong case for the idea the cost of market power depends on which technologies carry the wedges, since at the same marginal distributions and with an aggregate wedge $macron(mu) - 1$ that differs by only $0.01$, the pairing of scalability with capability alone moves $lambda_"total"$ from $17.4%$ to $31.9%$. A potential critique is that the welfare impact is merely rising linearly in corr$(alpha, nu)$ from -1 to 1. To investigate this potential issue, I map out this nonlinearity by adding intermediate arrangements randomly shuffling $alpha$ among a fraction of active firms within each sector: $20%$, $40%$, $60%$, and $80%$ starting from the baseline, and $33%$ and $67%$ starting from reverse sorting. Each permutation preserves the sectoral distributions of scalability and capability, the active set, and the baseline parameters. I display the resulting relationship in @fig:sorting_convexity in the Appendix, making sure to re-solve all four allocations and calculate the welfare legs so that all points in the figure are solved economies plotted at their realized corr$(alpha, nu)$.
+
+The points show that welfare costs rise slowly over negative correlations and much faster over positive correlations. The shuffled arrangement sits $52%$ of the way between the endpoints in correlation, but only $9%$ to $18%$ of the way in welfare cost. Thus, increasing correlation matters much more when it strengthens positive sorting than when it weakens negative sorting. This is the sense in which the relationship appears convex: the positive branch has a steeper slope, although it is approximately linear and the figure does not establish an exact threshold at zero. This result shows clearly that the impact of positive sorting between $alpha$ and $nu$ is the real force behind the results above, not merely an increasing correlation.
+
+
+#v(0.5cm)
+= Conclusion<sec:conclusion>
+#v(0.5cm)
 
 
 #colbreak()
+#bibliography("literature.bib", title: "References", style: "harvard-cite-them-right")
 
+#colbreak()
+
+// Appendix
 #counter(heading).update(0)
-#set heading(numbering: "A.1 ", supplement: [Appendix])
+#set heading(numbering: "A.1.", supplement: [Appendix])
+
 
 = Derivations
 #v(0.8cm)
@@ -665,9 +701,9 @@ These lists are not yet a numerical algorithm; they are the bookkeeping device f
 == Choice of anchoring statistic<anchor>
 #v(0.2cm)
 
-The anchoring statistic is the median rather than the sales-weighted mean of active-firm output, and this choice is not innocuous. By @eq:marginal_cost, the returns-to-scale term $(y/hat(y))^(1/alpha_(j i)-1)$ is exactly neutral at $y = hat(y)$, so $alpha_(j i)$ only distorts marginal cost for firms whose output falls away from the anchor: wherever the anchor sits, that is the population of firms $alpha_(j i)$ is not penalizing, and every other firm is priced relative to it. 
+The anchoring statistic is the median rather than the sales-weighted mean of active-firm output, and this choice is not innocuous. By @eq:marginal_cost, the returns-to-scale term $(y/hat(y))^(1/alpha_(j i)-1)$ is exactly neutral at $y = hat(y)$, so $alpha_(j i)$ only distorts marginal cost for firms whose output falls away from the anchor: wherever the anchor sits, that is the population of firms $alpha_(j i)$ is not penalizing, and every other firm is priced relative to it.
 
-Active-firm output is heavily right-skewed, so the sales-weighted mean is pulled deep into the tail of that distribution: in the baseline draw it exceeds the output of roughly 99.5% of active firms. Anchoring there would make $alpha_(j i)$ act, for nearly the entire firm population, as a mechanical penalty for being smaller than a handful of superstar firms, mixing genuine curvature in the production technology with the separate, already well-documented phenomenon of firm-size concentration. 
+Active-firm output is heavily right-skewed, so the sales-weighted mean is pulled deep into the tail of that distribution: in the baseline draw it exceeds the output of roughly 99.5% of active firms. Anchoring there would make $alpha_(j i)$ act, for nearly the entire firm population, as a mechanical penalty for being smaller than a handful of superstar firms, mixing genuine curvature in the production technology with the separate, already well-documented phenomenon of firm-size concentration.
 
 The median sidesteps this by construction: it splits the active-firm population evenly on either side of $hat(y)$ regardless of how fat the right tail is, so $alpha_(j i)$ is disciplined by curvature around a typical operating scale rather than by distance from the largest incumbents. The choice of median is also robuts, with re-anchoring $hat(y)$ to the baseline market's median active output, held fixed across arrangements, moves everything less than 1%.
 
@@ -764,12 +800,9 @@ Given $A_j$, the solver computes the fixed point of @eq:firm_demand through @eq:
 
 #figure(
   block(width: 80%)[
-    #image("figures/fig_sorting_convexity_overlay.pdf", width: 100%)
+    #image("figures/fig_sorting_convexity_curve.pdf", width: 100%)
     #align(left, text(size: 7.5pt)[_Note._ Each leg's $Delta$ is normalized to zero under reverse sorting and one under the baseline, so the shuffled point, reported in the legend, is the fraction of the reverse-to-baseline movement reached at corr$(alpha, nu) approx 0$. The dashed line is the linear benchmark between the two endpoints, which places the shuffled point at $52%$ in every leg, and the segments between the three arrangements are interpolations.])
     #v(0.5em)
   ],
   caption: [*Welfare cost of each leg against corr$(alpha, nu)$ across $alpha$-arrangements.*],
 )<fig:sorting_convexity>
-
-#colbreak()
-#bibliography("literature.bib",style: "harvard-cite-them-right")

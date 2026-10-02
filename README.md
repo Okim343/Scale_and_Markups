@@ -1,4 +1,4 @@
-# How Costly are Scalable Markups?
+# Market Power and the Scalability of Firms?
 
 **Enrico Truzzi** · Universitat Pompeu Fabra · [enrico.truzzi@upf.edu](mailto:enrico.truzzi@upf.edu)
 

@@ -1,4 +1,19 @@
 #import "@preview/ssrn-scribe:0.10.1": paper
+#import "figures/anchor_fig.typ": anchor-figure
+
+// Citations and cross-references (equations, figures, tables, sections) in blue.
+// The template colours links with its accent, so the colour is set on links
+// inside refs and cites rather than on the outer text.
+// LaTeX hyperref's blue (pure RGB blue), not Typst's softer built-in `blue`.
+#let ref-blue = rgb(0, 0, 255)
+#show ref: it => { show link: set text(fill: ref-blue); set text(fill: ref-blue); it }
+// As with natbib + hyperref, the parentheses around the year stay in the text colour.
+#show cite: it => {
+  show link: set text(fill: ref-blue)
+  set text(fill: ref-blue)
+  show regex("[()]"): set text(fill: rgb("#111111"))
+  it
+}
 
 #show: paper.with(
   meta: (
@@ -49,6 +64,7 @@
   let eq = math.equation
   let el = it.element
   if el != none and el.func() == eq {
+    show link: set text(fill: ref-blue)
     link(el.location(), numbering(
       el.numbering,
       ..counter(eq).at(el.location())
@@ -57,6 +73,7 @@
     it
   }
 }
+
 
 *TODO:*
 
@@ -69,14 +86,28 @@
 #colbreak()
 
 #v(0.5cm)
-= Proto-Introduction
+= Introduction
 #v(0.2cm)
 
-Classic oligopoly models typically assign every firm the same returns-to-scale parameters, so firms differ in productivity but not in how easily they can scale. With heterogenous RTS, capability and scalability jointly determine equilibrium size, and, under oligopoly, size determines markups. I argue that the sorting between productivity (here refered to as capability) and scalability , and not only their absolute value, plays a major role in shaping the aggregate welfare costs of market power. That is, the
+Firm heterogeneity plays a key role in the current literature addressing the curren rise in market power, in particular in explaining the documented rise in markups over recent decades. Seminal models of competition dynamics, such as #cite(form:"prose",<melitz2003impact>), #cite(form:"prose",<atkeson2008pricing>) and #cite(form:"prose",<hsieh2009misallocation>) argue that the rise in markups comes mainly from dominant firms capturing more market share by being more productive, allowing them as a consequence to charge higher markups. Such models normally assume homogenous _returns to scale_ (_RTS_) across firms, letting heterogeneity in _total factor productivity_ (_TFP_) explain most of origin of firms markups. Recent works such as #cite(form:"prose",<lashkari2024information>), #cite(form:"prose",<argente2025scalable>), #cite(form:"prose",<demirer2025production>) and #cite(form:"prose",<hubmer2025scalable>), however, have shown that firms differ in how easily they scale, and that this heterogeneity plays an important role in explaining key facts of firm dynamics previously associated with TFP differences. In particular, #cite(form:"prose",<hubmer2025scalable>) find in ther quantitative implementation that the alignement between TFP and RTS greatly affects a firm's total share of the market, and helps explain misallocation dynamics.
 
-The quantitative environment is an EMX-style sector oligopoly model with heterogeneous market exposure and finite-firm competition inside product markets. One simulated unit is one sector, and one sector is one nested-CES Cournot market. Markups are equilibrium outcomes,where more concentrated sectors generate larger firm market shares, and larger market shares relax perceived demand elasticities, raising markups. The model combines that endogenous-market-power mechanism with externally disciplined heterogeneity in returns to scale. The hypothesis is that a given markup wedge is more distortionary when it is attached to a firm that can absorb large quantities with only a limited increase in cost.
+In this paper, I introduce firm-level heterogeneity in returns-to-scale parameters to a standard oligopoly framework following #cite(form:"prose",<edmond2023costly>) (henceforth EMX), and explore how important the alignment between productivity and scalability is for the welfare impact of market power. With heterogenous RTS, productivity and scalability jointly determine equilibrium size, and, under oligopoly, size determines markups. I argue that the sorting between productivity (here refered to as capability) and scalability, and not only their absolute value, plays a major role in shaping the aggregate welfare costs of market power. The mechanism is that a given markup wedge is more distortionary when it is attached to a firm that can absorb large quantities with only a limited increase in cost.
 
-The paper is designed as a structural welfare exercise. Returns to scale are disciplined using firm-level evidence together with gross-output production function estimates using the approach from #cite(<gandhi2020identification>, form: "prose") (henceforth GNR) in the spirit of #cite(<hubmer2025scalable>, form: "prose"), while firm capability is summarized by its marginal cost at a common anchor output, calibrated inside the model. In the quantitative implementation, firms are draws from a common continuous joint distribution $F(alpha, nu)$: the $alpha$ margin is externally disciplined, while the capability margin $nu$ has a Pareto marginal with tail index $xi$ and lower bound $underline(nu)$. The tail index $xi$ is calibrated; the lower bound $underline(nu)$ is a units-fixing scale solved by the baseline anchoring condition (below) rather than a moment-targeted parameter.
+To achieve this, I introduce a quantitative framework designed to incorporate both variation in TFP and RTS within a preestablished and well-known oligopoly envinronment. The setting is a EMX-style sector oligopoly model with heterogeneous market exposure and finite-firm competition inside product markets. Producers are draws from a common continuous joint distribution $F(alpha, nu)$ where the RTS margin $alpha$ is externally disciplined, while the capability margin $nu$ has a Pareto marginal with tail index $xi$ following EMX. Returns to scale are disciplined using firm-level evidence together with gross-output production function estimates using the approach from #cite(<gandhi2020identification>, form: "prose") (henceforth GNR) in the spirit of #cite(<hubmer2025scalable>, form: "prose"). Meanwhile, firm capability is summarized by its marginal cost at a common anchor output, calibrated inside the model.
+
+I use administrative panel data for the universe of Compustat public firms from 2010-2019, operating at the NAICS2 level to guarantee well-behaved concentration metrics and well-populated sectors. This dataset provides detailed balance sheet information, including the total cost of capital, labor and intermediate inputs. However, all Compustat measures of labor costs (headcount and wage-bill alternatives) yield poor GNR estimates of labor elasticity, so I use value-added capital share by NAICS2 industry data to help inpute labor elasticity from KLEMS capital share#footnote[See @sec:data for more information]. Additionally, given the limited universe of publicly traded firms only, concentration metrics are far below observed ones in other more complete datasets such as the U.S. Census of Manufacturers. A future version of the analysis here presented would, ideally, make use of more complete datasets to improve the quality of measurements, both estimated and directly observed.
+
+In line with #cite(form: "prose",<hubmer2025scalable>), I find that scalability rises with size across the distribution, with differences in scalability parameters between the top and bottom deciles showing a gap of nearly two standard deviations in $alpha$. Differently from Hubmer, I find that the profile is predominantly concave, robust to within-sector or pooled rankings, such that RTS grows mostly at the bottom of the distribution and flattens out at the top. This pattern is, likewise, driven mostly by the higher output elasticities of intermediate inputs for larger firms. Labor and capital elasticities can even be declining with firm size in some cases.
+
+To compute the empirical firm-level markups for model calibration, I follow the production-function approach of #cite(form: "prose",<de2020rise>) and pin down markups as the product of an estimated elasticity and the firm's sales-to-cost ratio. These values are then aggregated across firms with cost weights and subsequently averaged over my time windown. I use cost-weighted markups following the argument presented by EMX that the sales-weigthed markup is the cost-weighted average plus a term that captures the variance of markups, and using it would overstate the aggregate markup. Additionally, since the model employed here has no separate overhead bucket, I use an SG&A-inclusive definition, since the COGS-only definition would compare the model markup to a narrower empirical object than what the model actually uses.
+
+
+
+
+
+
+#colbreak()
+
 
 #v(0.5cm)
 = The Model
@@ -309,7 +340,7 @@ Firm-years are collapsed to one window mean per firm, so $F^alpha$ is a cross se
     #align(left, text(size: 7.5pt)[_Note._ Demeaned mean $alpha$ within twenty equal-width bins of the firm's sales percentile, with firms ranked either in the pooled sample or within their sector, for the $6,230$ firms behind the $alpha$--log sales moment of @sec:calibration, using the hybrid $alpha$ before the shrink of $F^alpha$.])
     #v(0.5em)
   ],
-  caption: [*Mean scalability by sales percentile.*],
+  caption: [Mean scalability by sales percentile.],
 )<fig:alpha_by_size>
 
 A more direct check would correlate $alpha$ with log TFPQ $ln hat(z)$ from the production-function estimates of #cite(<gandhi2020identification>, form: "prose"). That correlation is not informative here. The estimate is a residual against a common industry technology, whereas in the model each firm operates its own technology with returns $alpha_(j i)$, as in @eq:relabel. Read that way, TFPQ has no common units: rescaling output and inputs by a factor $s$ shifts $ln hat(z)_(j i)$ by $(1 - alpha_(j i)) ln s$, a firm-specific amount that moves with $alpha$ itself, so relative TFP across firms has no cardinal interpretation #cite(<hubmer2025scalable>). Across rescalings from $s = 10^(-3)$ to $10^3$, the within-sector rank correlation of $alpha$ and $ln hat(z)$ goes from $+0.27$ to $-0.08$. #cite(<hubmer2025scalable>, form: "prose") meet the same problem in their quantitative model and do not impose the estimated joint distribution of returns to scale and TFP. They calibrate the correlation between the two internally, disciplined by the gap in average returns to scale between the top 5% and the bottom half of firms by revenue.
@@ -402,7 +433,7 @@ The model counterpart of the empirical $hat(b)$ target is the static sector-leve
     #align(left, text(size: 7.5pt)[_Note._ The five parameters are solved jointly, so the row pairing reports the moment each is most informative for rather than a sequential mapping. Dev. is the absolute deviation of the model moment from its target, in percent of the target. Full parameterization in Appendix @tab:param_ss.])
     #v(0.5em)
   ],
-  caption: [*Calibrated parameters and model fit.*],
+  caption: [Calibrated parameters and model fit.],
 )<tab:calib_fit>
 #v(0.3cm)
 
@@ -459,7 +490,7 @@ From below, the compression comes from the low calibrated $gamma$, which lifts t
     #align(left, text(size: 7.5pt)[_Note._ Sector $mu_j$ is the cost-weighted mean of firm markups within sector $j$, with percentiles weighted by sector cost. Firm percentiles are weighted by firm cost.])
     #v(0.5em)
   ],
-  caption: [*Cost-weighted distribution of sector and firm markups, baseline market against EMX.*],
+  caption: [Cost-weighted distribution of sector and firm markups, baseline market against EMX.],
 )<tab:markup_dist>
 #v(0.3cm)
 
@@ -521,7 +552,7 @@ The scale leg is a capital-accumulation margin, since with the markup wedge remo
     #align(left, text(size: 7.5pt)[_Note._ Panel A reports the four allocations that define the two lenses in @eq:lens_a and @eq:lens_b, all solved under $P = 1$ and $L = 1$. In Panel B, $lambda$ is the consumption-equivalent gain of each leg and $Delta = ln(1 + lambda)$ its additive counterpart.])
     #v(0.5em)
   ],
-  caption: [*Baseline allocations and the two-lens decomposition of the welfare cost of markups.*],
+  caption: [Baseline allocations and the two-lens decomposition of the welfare cost of markups.],
 )<tab:welfare_lenses>
 #v(0.3cm)
 
@@ -621,7 +652,7 @@ Note that reading this amplification as evidence that sorting is harmful would b
     #align(left, text(size: 7.5pt)[_Note._ All arrangements are solved on the same draws of $nu_(j i)$, the same active set and anchor, and with $chi$ at its baseline value, and shuffled values are averaged over ten permutation draws. In Panel A, $macron(mu)$ is the market's cost-weighted markup, which the uniform-markup allocation preserves, the fixed-input planner holds $K = K^(M E)$, and under homogeneous $alpha$ the correlation comes from variation across sectors only. Panel B reports the legs of @eq:lens_a and @eq:lens_b, which multiply to $1 + lambda_"total"$ within each lens. In Panel C, the common-$alpha$ term uses the primitive homogeneous-$alpha$ variant, and standard errors of the heterogeneity and sorting terms across draws are at most $0.0001$.])
     #v(0.5em)
   ],
-  caption: [*Welfare cost of markups by $alpha$-arrangement.*],
+  caption: [Welfare cost of markups by $alpha$-arrangement.],
 )<tab:sorting>
 #v(0.3cm)
 
@@ -648,6 +679,14 @@ The points show that welfare costs rise slowly over negative correlations and mu
 // Appendix
 #counter(heading).update(0)
 #set heading(numbering: "A.1.", supplement: [Appendix])
+// Appendix figures and tables are numbered within their appendix (A1, B1, ...),
+// restarting at each top-level appendix heading.
+#set figure(numbering: n => numbering("A", counter(heading).get().first()) + str(n))
+#show heading.where(level: 1): it => {
+  counter(figure.where(kind: image)).update(0)
+  counter(figure.where(kind: table)).update(0)
+  it
+}
 
 
 = Derivations
@@ -705,7 +744,16 @@ These lists are not yet a numerical algorithm; they are the bookkeeping device f
 
 The anchoring statistic is the median rather than the sales-weighted mean of active-firm output, and this choice is not innocuous. By @eq:marginal_cost, the returns-to-scale term $(y/hat(y))^(1/alpha_(j i)-1)$ is exactly neutral at $y = hat(y)$, so $alpha_(j i)$ only distorts marginal cost for firms whose output falls away from the anchor: wherever the anchor sits, that is the population of firms $alpha_(j i)$ is not penalizing, and every other firm is priced relative to it.
 
-Active-firm output is heavily right-skewed, so the sales-weighted mean is pulled deep into the tail of that distribution: in the baseline draw it exceeds the output of roughly 99.5% of active firms. Anchoring there would make $alpha_(j i)$ act, for nearly the entire firm population, as a mechanical penalty for being smaller than a handful of superstar firms, mixing genuine curvature in the production technology with the separate, already well-documented phenomenon of firm-size concentration.
+Active-firm output is heavily right-skewed, so the sales-weighted mean is pulled deep into the tail of that distribution: in the baseline draw it exceeds the output of roughly 99.5% of active firms. Anchoring there would make $alpha_(j i)$ act, for nearly the entire firm population, as a mechanical penalty for being smaller than a handful of superstar firms, mixing genuine curvature in the production technology with the separate, already well-documented phenomenon of firm-size concentration. @fig:anchor illustrates the difference.
+
+#figure(
+  block(width: 100%)[
+    #anchor-figure(unit: 0.82cm)
+    #align(left, text(size: 7.5pt)[_Note._ Schematic. Lines plot @eq:marginal_cost in logs for three values of $alpha_(j i)$ at common $nu_(j i)$; all pass through the anchor $hat(y)$. The grey area is the active-firm output density, and the percentages give the share of active firms on each side of the anchor. Left of $hat(y)$ a higher $alpha_(j i)$ raises marginal cost, right of it a higher $alpha_(j i)$ lowers it.])
+    #v(0.5em)
+  ],
+  caption: [Where the anchor sits determines which firms $alpha$ penalizes.],
+)<fig:anchor>
 
 The median sidesteps this by construction: it splits the active-firm population evenly on either side of $hat(y)$ regardless of how fat the right tail is, so $alpha_(j i)$ is disciplined by curvature around a typical operating scale rather than by distance from the largest incumbents. The choice of median is also robuts, with re-anchoring $hat(y)$ to the baseline market's median active output, held fixed across arrangements, moves everything less than 1%.
 
@@ -759,7 +807,7 @@ The median sidesteps this by construction: it splits the active-firm population 
     #align(left, text(size: 7.5pt)[_Note._ The calibrated vector is $(xi, N, gamma, eta, macron(rho))$: $(xi, N)$ discipline concentration, $gamma$ pins the markup level, $eta$ is disciplined by the EMX/Autor slope, and $macron(rho)$ targets the raw $alpha$--sales correlation. The capability scale $underline(nu)$ is solved by the baseline anchoring condition $tilde(y) = hat(y) equiv 1$, not calibrated. External empirical inputs include $F^alpha$, $alpha_(j i)$, $phi.alt_v$, $a$, and $omega_j$.])
     #v(0.5em)
   ],
-  caption: [*Parameterization used in the pooled sector-market steady-state implementation.*],
+  caption: [Parameterization used in the pooled sector-market steady-state implementation.],
 )<tab:param_ss>
 
 #colbreak()
@@ -795,7 +843,7 @@ Given $A_j$, the solver computes the fixed point of @eq:firm_demand through @eq:
     #align(left, text(size: 7.5pt)[_Note._ Raw pooled hybrid GNR-KLEMS returns-to-scale estimates, the winsorized and discretized distribution, and the final clipped support passed to the solver.])
     #v(0.5em)
   ],
-  caption: [*Construction of the scalability support $F^alpha$.*],
+  caption: [Construction of the scalability support $F^alpha$.],
 )<fig:alpha_support>
 
 #v(0.5cm)
@@ -806,5 +854,5 @@ Given $A_j$, the solver computes the fixed point of @eq:firm_demand through @eq:
     #align(left, text(size: 7.5pt)[_Note._ Each leg's $Delta$ is normalized to zero under reverse sorting and one under the baseline, so the shuffled point, reported in the legend, is the fraction of the reverse-to-baseline movement reached at corr$(alpha, nu) approx 0$. The dashed line is the linear benchmark between the two endpoints, which places the shuffled point at $52%$ in every leg, and the segments between the three arrangements are interpolations.])
     #v(0.5em)
   ],
-  caption: [*Welfare cost of each leg against corr$(alpha, nu)$ across $alpha$-arrangements.*],
+  caption: [Welfare cost of each leg against corr$(alpha, nu)$ across $alpha$-arrangements.],
 )<fig:sorting_convexity>

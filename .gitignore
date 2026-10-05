@@ -129,3 +129,4 @@ XX_mdfiles/*
 
 # Private university-server configuration and scripts (local only).
 /04_Code/marvin2/
+02_Drafts/figures/anchor_fig.typ

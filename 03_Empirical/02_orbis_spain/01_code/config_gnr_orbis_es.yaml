@@ -1,0 +1,120 @@
+# =============================================================================
+# GNR config for the Orbis Spain panel (02_clean_orbis_es.py output).
+# Same estimator settings as 00_Hubmer_RTS/01_code/config.yaml; only the input,
+# mapping, panel guardrails, outputs and publishing differ. Run the unchanged
+# stage scripts with:
+#   (cd 03_Empirical/00_Hubmer_RTS/01_code && \
+#     python 01_build_gnr_panel.py --config ../../02_orbis_spain/01_code/config_gnr_orbis_es.yaml)
+# Outputs are firm-level WRDS derivatives, so they stay under the gitignored
+# 01_intermediary/, and nothing is published to 01_industry_alpha.
+# =============================================================================
+
+pipeline_version: "0.1.0-orbis-es"
+
+# --- Input -------------------------------------------------------------------
+input:
+  # Orbis Spain GNR input from 02_clean_orbis_es.py (baseline tfas capital).
+  # Use the broad firm-year universe. The QJE cost-share trim used for
+  # aggregate markup construction is intentionally not imposed before GNR.
+  source: "03_Empirical/02_orbis_spain/01_intermediary/gnr_ready_tfas.dta"   # fias: gnr_ready_fias.dta
+
+# --- Variable mapping (chosen v1 mapping, fixed by the plan) ------------------
+mapping:
+  id: bvdid            # firm identifier (renamed to gvkey inside R1)
+  year: year           # fiscal-year panel variable in the curated file
+  ind: ind2d           # NAICS2 cell, 31-33 / 44-45 / 48-49 grouped (coded 31 / 44 / 48)
+  revenue: rev_D       # turn, else opre; HICP-deflated, 2019 EUR
+  capital: cap_D       # tfas (fias in gnr_ready_fias); HICP-deflated
+  materials: mate_D    # material costs; same deflator as revenue, so s is nominal
+  labor: staf_D        # wage bill, as Hubmer et al. App. C.3
+  wage_bill: wagebill_D # copy of staf_D (R1 needs a distinct column); w = 0, unused
+
+# --- Panel construction -------------------------------------------------------
+panel:
+  start_year: 2014           # 2014 is lag-only: it has no 2013 lag, so it never enters estimation
+  require_wages: false       # baseline GNR does NOT require wages for identification
+  build_materials_alt1: false # cogs - xlr robustness is Compustat-specific (mate excludes staf)
+  min_raw_rows: 3000000      # guardrail: catch accidental aggregation-trimmed inputs
+  min_post_start_rows: 3000000
+  min_final_rows: 2000000
+  # Optional subsampling for smoke tests (null = full sample).
+  sample_firms_frac: null
+  sample_seed: 12345
+
+# --- Trimming (mirrors est_gnr.m) ---------------------------------------------
+trimming:
+  # exp(s) = materials share of revenue must lie in this band (MATLAB sselectortwo).
+  share_bounds: [0.05, 0.95]
+  # Percentile trim on r, k, l, m, s (MATLAB mincut/maxcut; 1/100 trims the
+  # bottom 1% of each variable and nothing at the top).
+  pctile_mincut: 1
+  pctile_maxcut: 100
+  # Minimum observations per industry / per year in the trimmed sample.
+  ind_min_obs: 500
+  year_min_obs: 500
+
+# --- Step 1: NLS share regression (materials elasticity) -----------------------
+step1:
+  seed: 2020
+  n_workers: 10        # parallel multistart processes (1 = serial)
+  n_sobol: 6000        # Sobol pool size (MATLAB: gensobol(6000, ...))
+  n_starts: 100        # starting points drawn from the pool (before feasibility filter)
+  # Sobol box per parameter block (matches MATLAB):
+  #   intercept in [-2, 2]; 6 mid terms in [-0.5, 0.5]; last 3 in [-0.1, 0.1]
+  sobol_bounds:
+    intercept: [-2.0, 2.0]
+    mid: [-0.5, 0.5]
+    tail: [-0.1, 0.1]
+  n_ols_jitter: 20      # extra starts jittered around the OLS guess
+  ols_jitter_scale: 0.25
+  maxiter_local: 2000   # per-start L-BFGS-B iterations
+  maxfev_polish: 10000  # Nelder-Mead polish budget (MATLAB fminsearch MaxFunEvals)
+
+# --- Step 2: nested GMM (integration constant + productivity Markov process) ---
+step2:
+  seed: 1982
+  n_workers: 10
+  n_sobol: 500
+  n_starts: 100
+  sobol_bounds: [-1.0, 1.0]
+  wide_sobol_bounds: [-3.0, 3.0]
+  n_wide_starts: 50
+  economic_starts:
+    - [1.67857926, -1.51049733, -0.08923862, 0.01331914, 0.09286090]
+    - [1.0, -1.0, 0.0, 0.0, 0.0]
+  h2size: 4             # cubic Markov process (MATLAB h2size = 4)
+  maxiter_local: 1000
+  maxfev_polish: 10000
+  maxiter_polish: 5000
+
+# --- Post-processing ------------------------------------------------------------
+postprocess:
+  # Diagnostics-only band: RTS outside this range is flagged (not dropped).
+  rts_flag_range: [0.0, 3.0]
+
+# --- Export for the alpha pipeline ----------------------------------------------
+export:
+  # Window used for the sector-level naics_rts aggregation (continuity /
+  # diagnostics object). null = full estimation sample.
+  window: [2015, 2023]
+  # Copy firm_year_rts.parquet into
+  # 01_industry_alpha/00_indata/04_salgado_data/firm_year_rts.parquet.
+  # This is the intended integration point; 05_build_F_alpha.py auto-detects it.
+  publish_firm_year_to_alpha_pipeline: false   # never publish Orbis output over Compustat
+  # SAFETY: by default we never overwrite the original Salgado naics_rts.csv.
+  # The GNR sector aggregation is written as naics_rts_gnr.csv instead.
+  # Setting this to true backs up the original (timestamped) and overwrites it.
+  overwrite_legacy_naics_rts: false
+
+# --- Alpha-omega correlation (stage 05; produces the moment only) -------------
+alpha_omega_corr:
+  min_firms_per_sector: 30
+  winsor_pct: [0.01, 0.99]
+
+# --- Output locations ------------------------------------------------------------
+output:
+  intermediary_dir: "03_Empirical/02_orbis_spain/01_intermediary/gnr"
+  outdata_dir: "03_Empirical/02_orbis_spain/01_intermediary/gnr_out"
+
+# --- Logging ----------------------------------------------------------------------
+log_level: INFO

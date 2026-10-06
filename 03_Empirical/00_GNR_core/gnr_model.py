@@ -1,6 +1,6 @@
 """
 Core GNR math, translated from the MATLAB research code in
-03_Empirical/00_Hubmer_RTS/00_original_code (est_gnr.m, nls_obj.m,
+03_Empirical/00_GNR_core/00_original_code (est_gnr.m, nls_obj.m,
 nls_const_filter.m, step2_obj.m, gensobol.m).
 
 Conventions (all inputs in logs):
@@ -11,7 +11,8 @@ Conventions (all inputs in logs):
   Step 2 instruments:
       IV = [k, k^2, ll, ll^2, k*ll]      (ll = lagged log labor)
 
-Deliberate divergences from the MATLAB script (documented in README.md):
+Deliberate divergences from the MATLAB script (documented in
+01_Compustat/00_Hubmer_RTS/01_code/README.md):
   1. Output elasticities of capital/labor are computed via the analytic
      derivative of the integrated share polynomial directly, instead of
      the MATLAB trick of multiplying selected P1/P2 columns and dividing

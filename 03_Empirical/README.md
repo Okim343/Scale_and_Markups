@@ -6,14 +6,21 @@ The structural model has **no sector dimension**. NAICS2, represented in the pip
 
 ```text
 03_Empirical/
-├── 00_Hubmer_RTS/
-│   ├── 01_code/          # pooled GNR estimation and alpha-omega dependence
-│   └── 03_outdata/       # firm_year_rts.parquet, alpha_omega_corr.json (legacy diagnostic)
-└── 01_industry_alpha/
-    ├── 00_indata/        # raw/published inputs
-    ├── 01_intermediary/  # restartable S-stage outputs
-    ├── 02_code/          # bundle assembly pipeline
-    └── 03_outdata/       # model-facing bundle and reference outputs
+├── 00_GNR_core/              # shared GNR estimator (gnr_model, gnr_panel, gnr_estimate, gnr_postprocess)
+│   └── 00_original_code/     # Hubmer et al. MATLAB originals
+├── 01_Compustat/             # current calibration source
+│   ├── 00_Hubmer_RTS/
+│   │   ├── 01_code/          # pooled GNR stages R1-R5 (wrappers around 00_GNR_core)
+│   │   └── 03_outdata/       # firm_year_rts.parquet, alpha_omega_corr.json (legacy diagnostic)
+│   └── 01_industry_alpha/
+│       ├── 00_indata/        # raw/published inputs
+│       ├── 01_intermediary/  # restartable S-stage outputs
+│       ├── 02_code/          # bundle assembly pipeline
+│       └── 03_outdata/       # model-facing bundle and reference outputs
+└── 02_Orbis/                 # Spanish Orbis (WRDS-licensed data, all gitignored)
+    ├── 01_Cleaning/          # extraction + cleaning to a GNR-ready panel (ORBIS_SPAIN_*.md at repo root)
+    ├── 02_GNR/               # per-NAICS2-cell GNR on 00_GNR_core
+    └── 03_Markups/
 
 04_Code/steady_state/
 ├── io_bundle.py          # validates and loads the three-file contract
@@ -37,11 +44,11 @@ Stage R4 publishes `firm_year_rts.parquet` to `01_industry_alpha/00_indata/04_sa
 To regenerate them from the repository root:
 
 ```bash
-(cd 03_Empirical/00_Hubmer_RTS/01_code && python 01_build_gnr_panel.py)
-(cd 03_Empirical/00_Hubmer_RTS/01_code && python 02_estimate_gnr.py)
-(cd 03_Empirical/00_Hubmer_RTS/01_code && python 03_postprocess_gnr.py)
-(cd 03_Empirical/00_Hubmer_RTS/01_code && python 04_export_rts_for_alpha_pipeline.py)
-(cd 03_Empirical/00_Hubmer_RTS/01_code && python 05_alpha_omega_corr.py)
+(cd 03_Empirical/01_Compustat/00_Hubmer_RTS/01_code && python 01_build_gnr_panel.py)
+(cd 03_Empirical/01_Compustat/00_Hubmer_RTS/01_code && python 02_estimate_gnr.py)
+(cd 03_Empirical/01_Compustat/00_Hubmer_RTS/01_code && python 03_postprocess_gnr.py)
+(cd 03_Empirical/01_Compustat/00_Hubmer_RTS/01_code && python 04_export_rts_for_alpha_pipeline.py)
+(cd 03_Empirical/01_Compustat/00_Hubmer_RTS/01_code && python 05_alpha_omega_corr.py)
 ```
 
 All five scripts accept an optional `--config config_smoke.yaml` (or any other config path) through their shared parser.
@@ -72,23 +79,23 @@ S6 and S6b can run any time after S4b (they read the same S4b hybrid-alpha panel
 Copy-paste run block, from the repository root:
 
 ```bash
-(cd 03_Empirical/01_industry_alpha/02_code && python 01_load_compustat.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 02_pooled_targets.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 04_klems_capital_share.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 04b_build_hybrid_alpha.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 05_build_F_alpha.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 06_alpha_omega_corr_hybrid.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 06b_alpha_sales_corr_hybrid.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 07_aggregate_moments.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 08b_emx_slope_moment.py)
-(cd 03_Empirical/01_industry_alpha/02_code && python 08_assemble_bundle.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 01_load_compustat.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 02_pooled_targets.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 04_klems_capital_share.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 04b_build_hybrid_alpha.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 05_build_F_alpha.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 06_alpha_omega_corr_hybrid.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 06b_alpha_sales_corr_hybrid.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 07_aggregate_moments.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 08b_emx_slope_moment.py)
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && python 08_assemble_bundle.py)
 ```
 
 The scripts, current `config.yaml`, emitted YAML, and structural loader are authoritative; there is no separate pipeline-plan design doc in this directory anymore.
 
 ## Bundle contract
 
-`04_Code/steady_state/config.yaml` resolves `paths.bundle_dir` to `03_Empirical/01_industry_alpha/03_outdata`. `io_bundle.load_bundle()` requires these three files:
+`04_Code/steady_state/config.yaml` resolves `paths.bundle_dir` to `03_Empirical/01_Compustat/01_industry_alpha/03_outdata`. `io_bundle.load_bundle()` requires these three files:
 
 ### `F_alpha.parquet`
 
@@ -105,7 +112,7 @@ The loader (`io_bundle.F_ALPHA_REQUIRED_COLS`) only *requires* `node_id`, `u`, `
 
 **Naming trap.** The on-disk data key `mu_cw` is the accounting markup (aggregate revenue / variable cost). The model calls that object `mu_cw_alpha` and reserves the unqualified name `mu_cw` for the *pure* cost-weighted markup (`Σ TC·μ / Σ TC`), which is the actual calibration target — remapped from the data's `mu_cw_sga` (SG&A-inclusive) by default. `Bundle.targets`/`Bundle.calibration_targets()` in `io_bundle.py` do this remap at the loader boundary; don't read the data key `mu_cw` as the model's calibration target.
 
-Current values (`03_Empirical/01_industry_alpha/03_outdata/aggregate_moments.yaml`):
+Current values (`03_Empirical/01_Compustat/01_industry_alpha/03_outdata/aggregate_moments.yaml`):
 
 ```yaml
 targets:
@@ -179,7 +186,7 @@ The first Compustat file is also the GNR raw input specified by `00_Hubmer_RTS/0
 From the repository root, regenerate the bundle and run a fast structural smoke pass:
 
 ```bash
-(cd 03_Empirical/01_industry_alpha/02_code && \
+(cd 03_Empirical/01_Compustat/01_industry_alpha/02_code && \
   python 01_load_compustat.py && \
   python 02_pooled_targets.py && \
   python 04_klems_capital_share.py && \

@@ -80,14 +80,14 @@ def read_copula_rho_bar(config: dict, logger) -> tuple[float | None, dict | None
         return None, None
     source = cfg.get(
         "source",
-        "03_Empirical/01_industry_alpha/03_outdata/alpha_omega_corr_hybrid.json",
+        "03_Empirical/01_Compustat/01_industry_alpha/03_outdata/alpha_omega_corr_hybrid.json",
     )
     key = cfg.get("key", "implied_gaussian_copula_rho")
     src_path = (PATHS.project_root / source).resolve()
     if not src_path.exists():
         raise FileNotFoundError(
             f"alpha_z_copula source missing: {src_path}. ρ̄ is a required external "
-            "input; produce it via 03_Empirical/00_Hubmer_RTS, or set "
+            "input; produce it via 03_Empirical/01_Compustat/00_Hubmer_RTS, or set "
             "alpha_z_copula.enabled: false."
         )
     with open(src_path) as f:
@@ -129,7 +129,7 @@ def read_alpha_sales_corr_empirical(config: dict, logger) -> tuple[float, float,
     value = float(doc[key])
     partial_value = float(doc[partial_key])
     provenance = {
-        "source": "03_Empirical/01_industry_alpha/03_outdata/alpha_sales_corr_hybrid.json",
+        "source": "03_Empirical/01_Compustat/01_industry_alpha/03_outdata/alpha_sales_corr_hybrid.json",
         "key": key,
         "value": value,
         "partial_key": partial_key,

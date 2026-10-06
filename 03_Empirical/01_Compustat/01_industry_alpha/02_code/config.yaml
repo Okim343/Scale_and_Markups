@@ -107,7 +107,7 @@ alpha_z_copula:
   # Recomputed on the hybrid alpha (Stage S6). The legacy GNR-side
   # 00_Hubmer_RTS/03_outdata/alpha_omega_corr.json is preserved as a diagnostic
   # but is no longer consumed by the bundle.
-  source: 03_Empirical/01_industry_alpha/03_outdata/alpha_omega_corr_hybrid.json
+  source: 03_Empirical/01_Compustat/01_industry_alpha/03_outdata/alpha_omega_corr_hybrid.json
   key: implied_gaussian_copula_rho
 
 # --- Monte Carlo settings (read by the solver, not the empirical pipeline) --

@@ -130,3 +130,10 @@ XX_mdfiles/*
 # Private university-server configuration and scripts (local only).
 /04_Code/marvin2/
 02_Drafts/figures/anchor_fig.typ
+
+# Orbis (WRDS-licensed, never commit). The repo-wide *indata*/ and *intermediary*/ rules
+# already cover these; the explicit rules guard against a future folder rename.
+03_Empirical/02_Orbis/**/00_indata/
+03_Empirical/02_Orbis/**/01_intermediary/
+03_Empirical/02_Orbis/**/*.parquet
+03_Empirical/02_Orbis/**/*.dta

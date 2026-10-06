@@ -1,5 +1,5 @@
 paths:
-  bundle_dir: ../../03_Empirical/01_industry_alpha/03_outdata
+  bundle_dir: ../../03_Empirical/01_Compustat/01_industry_alpha/03_outdata
   out_results_dir: ../out_results
   out_figs_dir: ../out_figs
 
@@ -40,7 +40,7 @@ exposure:
 # NOTE: alpha-support shaping (winsorize -> mean-preserving RTS shrink -> clip)
 # now lives entirely in the empirical pipeline (Stage S5). The bundle ships the
 # final model-facing F(alpha); the solver samples it verbatim. To switch the
-# shrink variant/λ or the clip bound, edit 03_Empirical/01_industry_alpha/
+# shrink variant/λ or the clip bound, edit 03_Empirical/01_Compustat/01_industry_alpha/
 # 02_code/config.yaml (F_alpha.support_variant / shrink_lambda / alpha_clip)
 # and rerun S5->S8. There is no model-side `alpha_support` knob anymore.
 

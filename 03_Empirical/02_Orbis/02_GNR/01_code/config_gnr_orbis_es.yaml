@@ -1,12 +1,11 @@
 # =============================================================================
-# GNR config for the Orbis Spain panel (02_clean_orbis_es.py output).
-# Same estimator settings as 00_Hubmer_RTS/01_code/config.yaml; only the input,
-# mapping, panel guardrails, outputs and publishing differ. Run the unchanged
-# stage scripts with:
-#   (cd 03_Empirical/00_Hubmer_RTS/01_code && \
-#     python 01_build_gnr_panel.py --config ../../02_orbis_spain/01_code/config_gnr_orbis_es.yaml)
+# GNR config for the Orbis Spain panel (01_Cleaning/01_code/02_clean_orbis_es.py).
+# Same estimator settings as the Compustat config
+# (01_Compustat/00_Hubmer_RTS/01_code/config.yaml); only the input, mapping,
+# panel guardrails, outputs and publishing differ. The estimator itself is the
+# shared 03_Empirical/00_GNR_core.
 # Outputs are firm-level WRDS derivatives, so they stay under the gitignored
-# 01_intermediary/, and nothing is published to 01_industry_alpha.
+# 01_intermediary/, and nothing is published to the Compustat alpha pipeline.
 # =============================================================================
 
 pipeline_version: "0.1.0-orbis-es"
@@ -16,7 +15,7 @@ input:
   # Orbis Spain GNR input from 02_clean_orbis_es.py (baseline tfas capital).
   # Use the broad firm-year universe. The QJE cost-share trim used for
   # aggregate markup construction is intentionally not imposed before GNR.
-  source: "03_Empirical/02_orbis_spain/01_intermediary/gnr_ready_tfas.dta"   # fias: gnr_ready_fias.dta
+  source: "03_Empirical/02_Orbis/01_Cleaning/01_intermediary/gnr_ready_tfas.dta"   # fias: gnr_ready_fias.dta
 
 # --- Variable mapping (chosen v1 mapping, fixed by the plan) ------------------
 mapping:
@@ -98,7 +97,7 @@ export:
   # diagnostics object). null = full estimation sample.
   window: [2015, 2023]
   # Copy firm_year_rts.parquet into
-  # 01_industry_alpha/00_indata/04_salgado_data/firm_year_rts.parquet.
+  # 01_Compustat/01_industry_alpha/00_indata/04_salgado_data/firm_year_rts.parquet.
   # This is the intended integration point; 05_build_F_alpha.py auto-detects it.
   publish_firm_year_to_alpha_pipeline: false   # never publish Orbis output over Compustat
   # SAFETY: by default we never overwrite the original Salgado naics_rts.csv.
@@ -113,8 +112,8 @@ alpha_omega_corr:
 
 # --- Output locations ------------------------------------------------------------
 output:
-  intermediary_dir: "03_Empirical/02_orbis_spain/01_intermediary/gnr"
-  outdata_dir: "03_Empirical/02_orbis_spain/01_intermediary/gnr_out"
+  intermediary_dir: "03_Empirical/02_Orbis/02_GNR/01_intermediary"
+  outdata_dir: "03_Empirical/02_Orbis/02_GNR/01_intermediary/out"
 
 # --- Logging ----------------------------------------------------------------------
 log_level: INFO

@@ -2,7 +2,7 @@
 
 Python reimplementation of the Gandhi–Navarro–Rivers (2020, JPE) gross-output
 production-function estimator, adapted from the MATLAB research code in
-`../00_original_code/`. Spec / source of truth:
+`../../../00_GNR_core/00_original_code/`. Spec / source of truth:
 `02_Drafts/md_files/hubmer_rts_implementation.md`.
 
 The pipeline produces a **pooled firm-year RTS panel** (not per-NAICS2
@@ -13,7 +13,7 @@ the `01_industry_alpha` pipeline, which converts it into the model's
 ## Run order
 
 ```bash
-cd 03_Empirical/00_Hubmer_RTS/01_code
+cd 03_Empirical/01_Compustat/00_Hubmer_RTS/01_code
 python 01_build_gnr_panel.py                 # panel + trimming      (~minutes)
 python 02_estimate_gnr.py                    # GNR steps 1 and 2     (~30 min - 2 h)
 python 03_postprocess_gnr.py                 # firm-year RTS panel   (~minutes)
@@ -43,7 +43,7 @@ done
 | `config.yaml` | All settings: variable mapping, trimming, optimizer, export flags. |
 | `config_smoke.yaml` | Small-sample smoke-test config (isolated outputs, no publishing). |
 | `utils.py` | Paths / config / logging. Self-contained — no imports from `01_industry_alpha`. |
-| `gnr_model.py` | Core GNR math (polynomials, Step-1 NLS objective, nested Step-2 GMM, elasticities, Sobol starts). |
+| `../../../00_GNR_core/` | Shared estimator: `gnr_model.py` (core math), `gnr_panel.py` (R1 logs/lags/trimming), `gnr_estimate.py` (R2 steps 1-2), `gnr_postprocess.py` (R3 reconstruction). The stage scripts here only handle Compustat I/O and config; `utils.py` puts the core on `sys.path`. |
 | `01_build_gnr_panel.py` | Compustat → GNR input panel (logs, shares, firm-level lags) + MATLAB trimming. |
 | `02_estimate_gnr.py` | Step 1 multistart NLS; Step 2 nested multistart GMM. Saves `step1/step2_results.json`. |
 | `03_postprocess_gnr.py` | Firm-year `eps, melast, kelast, lelast, omega, eta, rts (= alpha_gross_output)`. |

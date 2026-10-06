@@ -13,7 +13,7 @@ input:
   # Curated Compustat panel with deflated variables (recommended v1 source).
   # Use the broad firm-year universe. The QJE cost-share trim used for
   # aggregate markup construction is intentionally not imposed before GNR.
-  source: "03_Empirical/01_industry_alpha/00_indata/03_Compustat/data_main_upd_trim_1.dta"
+  source: "03_Empirical/01_Compustat/01_industry_alpha/00_indata/03_Compustat/data_main_upd_trim_1.dta"
 
 # --- Variable mapping (chosen v1 mapping, fixed by the plan) ------------------
 mapping:
@@ -110,8 +110,8 @@ alpha_omega_corr:
 
 # --- Output locations ------------------------------------------------------------
 output:
-  intermediary_dir: "03_Empirical/00_Hubmer_RTS/02_intermediary"
-  outdata_dir: "03_Empirical/00_Hubmer_RTS/03_outdata"
+  intermediary_dir: "03_Empirical/01_Compustat/00_Hubmer_RTS/02_intermediary"
+  outdata_dir: "03_Empirical/01_Compustat/00_Hubmer_RTS/03_outdata"
 
 # --- Logging ----------------------------------------------------------------------
 log_level: INFO

@@ -28,10 +28,10 @@ import yaml
 # Paths
 # -----------------------------------------------------------------------------
 # This file lives at:
-#   <PROJECT_ROOT>/03_Empirical/01_industry_alpha/02_code/utils.py
-# so PROJECT_ROOT is parents[3].
+#   <PROJECT_ROOT>/03_Empirical/01_Compustat/01_industry_alpha/02_code/utils.py
+# so PROJECT_ROOT is parents[4].
 _THIS = Path(__file__).resolve()
-PROJECT_ROOT = _THIS.parents[3]
+PROJECT_ROOT = _THIS.parents[4]
 EMP_ROOT = _THIS.parents[1]               # 01_industry_alpha
 INDATA = EMP_ROOT / "00_indata"
 INTERMEDIARY = EMP_ROOT / "01_intermediary"

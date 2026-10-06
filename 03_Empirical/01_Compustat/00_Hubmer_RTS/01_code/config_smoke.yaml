@@ -13,7 +13,7 @@
 pipeline_version: "0.1.0-smoke"
 
 input:
-  source: "03_Empirical/01_industry_alpha/00_indata/03_Compustat/data_main_upd_trim_1.dta"
+  source: "03_Empirical/01_Compustat/01_industry_alpha/00_indata/03_Compustat/data_main_upd_trim_1.dta"
 
 mapping:
   id: gvkey
@@ -83,7 +83,7 @@ alpha_omega_corr:
   winsor_pct: [0.01, 0.99]
 
 output:
-  intermediary_dir: "03_Empirical/00_Hubmer_RTS/02_intermediary/smoke"
-  outdata_dir: "03_Empirical/00_Hubmer_RTS/03_outdata/smoke"
+  intermediary_dir: "03_Empirical/01_Compustat/00_Hubmer_RTS/02_intermediary/smoke"
+  outdata_dir: "03_Empirical/01_Compustat/00_Hubmer_RTS/03_outdata/smoke"
 
 log_level: INFO

@@ -178,7 +178,7 @@ all fixed names — see §12); it is not read by `config.py` either.
 `steady_state/io_bundle.py` reads a pooled empirical bundle from:
 
 ```text
-03_Empirical/01_industry_alpha/03_outdata/
+03_Empirical/01_Compustat/01_industry_alpha/03_outdata/
 ```
 
 The current bundle contains exactly three required artifacts:

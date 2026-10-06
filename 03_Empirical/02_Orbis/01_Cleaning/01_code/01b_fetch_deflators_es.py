@@ -9,7 +9,7 @@ Spain transmits P1/P2 in nama_10_a64 only at current prices, and no supply-use t
 previous-year prices. The VA deflator is therefore the only industry price index at A64.
 See ORBIS_SPAIN_CLEANING.md.
 
-    python 03_Empirical/02_orbis_spain/01_code/01b_fetch_deflators_es.py [--refresh]
+    python 03_Empirical/02_Orbis/01_Cleaning/01_code/01b_fetch_deflators_es.py [--refresh]
 
 Writes (public data; ignored by the repo-wide *indata*/ rule, rerun this script to rebuild):
     00_indata/deflators/{table}_ES.json     raw JSON-stat downloads

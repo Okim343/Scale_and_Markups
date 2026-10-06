@@ -1,7 +1,7 @@
 """Pooled bundle loader.
 
 Reads the three artifacts produced by the natively pooled empirical pipeline
-(``03_Empirical/01_industry_alpha/03_outdata/``):
+(``03_Empirical/01_Compustat/01_industry_alpha/03_outdata/``):
 
 * ``F_alpha.parquet``        — a SINGLE pooled scalability distribution
   (N equal-mass nodes; no sector dimension).

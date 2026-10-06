@@ -7,7 +7,7 @@ Reads (gitignored, WRDS-licensed):
 Writes to 01_intermediary/ (gitignored):
     orbis_es_clean_panel.parquet   all years 2014-2024, all sectors, both capital flags
     gnr_ready_{tfas,fias}.parquet  GNR inputs: 2014-2023, retained sectors, capital > 0
-    gnr_ready_{tfas,fias}.dta      same, for 00_Hubmer_RTS stage R1 (reads Stata)
+    gnr_ready_{tfas,fias}.dta      same, in Stata format
     gnr_ready_tfas_with2024.*      only with --include-2024 (robustness)
 and 01_intermediary/cleaning_report.md (row waterfall, cell sizes, summary stats).
 
@@ -18,7 +18,7 @@ Steps (decisions documented in ORBIS_SPAIN_CLEANING.md):
   4. revenue = turn, else opre          8. consecutive-year indicators
                                         9. sector exclusions; window 2014-2023
 
-    python 03_Empirical/02_orbis_spain/01_code/02_clean_orbis_es.py [--include-2024]
+    python 03_Empirical/02_Orbis/01_Cleaning/01_code/02_clean_orbis_es.py [--include-2024]
 """
 
 import argparse
@@ -38,7 +38,7 @@ WINDOW = (2015, 2023)           # baseline analysis window
 ROBUST_YEAR = 2024              # selectively incomplete; robustness only
 BASE_YEAR = 2019
 
-# NAICS2 grouping of the existing pipeline (01_industry_alpha COMPUSTAT_TO_SECTOR_ID).
+# NAICS2 grouping of the Compustat pipeline (01_Compustat/01_industry_alpha COMPUSTAT_TO_SECTOR_ID).
 # `ind2d` carries the first code of each group so R1 gets an integer cell id.
 NAICS_GROUP = {31: 31, 32: 31, 33: 31, 44: 44, 45: 44, 48: 48, 49: 48}
 SECTOR_LABEL = {31: "31-33", 44: "44-45", 48: "48-49"}

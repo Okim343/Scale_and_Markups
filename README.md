@@ -64,8 +64,8 @@ $$\Delta_{\text{base}} = \Delta_{\text{hom}} + (\Delta_{\text{shuf}} - \Delta_{\
 
 | Draft section | Object | Code |
 |---|---|---|
-| Data and Measurement | Firm-level returns to scale (GNR) | `03_Empirical/00_Hubmer_RTS/01_code/` (stages R1 to R5) |
-| Data and Measurement | Pooled targets, $F(\alpha)$, copula inputs, calibration bundle | `03_Empirical/01_industry_alpha/02_code/` (stages S1 to S8) |
+| Data and Measurement | Firm-level returns to scale (GNR) | `03_Empirical/01_Compustat/00_Hubmer_RTS/01_code/` (stages R1 to R5; estimator in `03_Empirical/00_GNR_core/`) |
+| Data and Measurement | Pooled targets, $F(\alpha)$, copula inputs, calibration bundle | `03_Empirical/01_Compustat/01_industry_alpha/02_code/` (stages S1 to S8) |
 | Pooled-Market Steady State | Market equilibrium and sector firm counts | `04_Code/steady_state/model/` |
 | Calibration | Simulated method of moments | `04_Code/steady_state/calibration/` |
 | Welfare Cost of Markups, Lens A | Reallocation and scale legs | `04_Code/counterfactuals/fixed_input_welfare/` |
@@ -106,7 +106,7 @@ python -m counterfactuals.scalability_sorting.run_scalability_sorting --calibrat
 **Tests.**
 
 ```bash
-pytest 04_Code/tests 03_Empirical/01_industry_alpha/02_code/tests
+pytest 04_Code/tests 03_Empirical/01_Compustat/01_industry_alpha/02_code/tests
 ```
 
 **Computational note.** The market solver is vectorised and parallelised across simulated sectors. A full calibration with 5,000 simulated sectors takes around two hours parallelised over 16 Haswell cores, whereas a single counterfactual at 10,000 sectors runs in around ten to fifteen minutes.

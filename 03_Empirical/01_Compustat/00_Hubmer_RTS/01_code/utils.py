@@ -8,6 +8,7 @@ Provides:
   - setup_logger(): stage-specific logger writing to stdout.
   - ensure_dir()  : mkdir -p helper.
   - resolve_path(): resolve config paths relative to the project root.
+  - GNR_CORE      : 03_Empirical/00_GNR_core, added to sys.path on import.
 
 This module is intentionally self-contained: it does NOT import anything
 from 01_industry_alpha, so the RTS pipeline can run (and fail) without
@@ -30,11 +31,17 @@ import yaml
 # Paths
 # -----------------------------------------------------------------------------
 # This file lives at:
-#   <PROJECT_ROOT>/03_Empirical/00_Hubmer_RTS/01_code/utils.py
+#   <PROJECT_ROOT>/03_Empirical/01_Compustat/00_Hubmer_RTS/01_code/utils.py
 _THIS = Path(__file__).resolve()
-PROJECT_ROOT = _THIS.parents[3]
+PROJECT_ROOT = _THIS.parents[4]
 RTS_ROOT = _THIS.parents[1]               # 00_Hubmer_RTS
 CODE = RTS_ROOT / "01_code"
+
+# Source-agnostic GNR estimator (gnr_model, gnr_panel, gnr_estimate, gnr_postprocess),
+# shared with 02_Orbis. Stage scripts import utils first, so this runs before them.
+GNR_CORE = PROJECT_ROOT / "03_Empirical" / "00_GNR_core"
+if str(GNR_CORE) not in sys.path:
+    sys.path.insert(0, str(GNR_CORE))
 
 
 @dataclass(frozen=True)
@@ -45,7 +52,7 @@ class _Paths:
 
     @property
     def alpha_pipeline_root(self) -> Path:
-        return self.project_root / "03_Empirical" / "01_industry_alpha"
+        return self.project_root / "03_Empirical" / "01_Compustat" / "01_industry_alpha"
 
     @property
     def alpha_salgado_dir(self) -> Path:

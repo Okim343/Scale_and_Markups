@@ -7,7 +7,7 @@ ex-ante Gaussian-copula α–z rank correlation. It MUST be recomputed on the
 hybrid alpha — using the raw-GNR ρ̄ with a hybrid support would be internally
 inconsistent (plan §3.3).
 
-Method ported from 03_Empirical/00_Hubmer_RTS/01_code/05_alpha_omega_corr.py
+Method ported from 03_Empirical/01_Compustat/00_Hubmer_RTS/01_code/05_alpha_omega_corr.py
 (firm-mean collapse, within-sector winsor, pooled within-sector Spearman,
 2·sin(π·ρ_S/6) Gaussian-copula mapping, odd/even split-sample check), reading
 `alpha_hybrid_sector_a`/`omega` from the S4b panel over the active window.

@@ -479,6 +479,68 @@ def run_step2_matlab(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
 
 ROOT_J_TOL = 1e-6        # efficient J below this counts as an exact root
 ROOT_CLUSTER_TOL = 1e-5  # relative distance in original coefficients for "same root"
+ROOT_SELECTION_RULES = ("most_starts", "most_starts_grouped")
+
+
+def root_elasticities(sub: pd.DataFrame, s1: dict, a: np.ndarray) -> dict:
+    """Step-2-sample moments of the elasticities implied by P2 coefficients `a`, computed as
+    gnr_postprocess.reconstruct_firm_year does (melast from step 1, gm.kelast / gm.lelast)."""
+    gamma_scaled = np.asarray(s1["gamma_scaled"])
+    k, m, l = (sub[c].to_numpy() for c in ["k", "m", "l"])
+    p2 = gm.build_p2(k, l)
+    mel = gm.melast(gm.build_p1(k, m, l), gamma_scaled)
+    kel = gm.kelast(k, m, l, p2, gamma_scaled, a)
+    lel = gm.lelast(k, m, l, p2, gamma_scaled, a)
+    out = {}
+    for name, x in (("melast", mel), ("lelast", lel), ("kelast", kel), ("rts", mel + kel + lel)):
+        q = np.percentile(x, [10, 50, 90])
+        out[name] = {"mean": float(x.mean()), "p10": float(q[0]), "p50": float(q[1]),
+                     "p90": float(q[2]), "share_neg": float((x < 0).mean())}
+    return out
+
+
+def group_roots(elast: list, tol: dict) -> list:
+    """Single-linkage groups of roots whose mean RTS, lelast and kelast all differ by less
+    than tol["rts"], tol["lelast"], tol["kelast"]. Returns lists of root indices."""
+    n = len(elast)
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if all(abs(elast[i][v]["mean"] - elast[j][v]["mean"]) < float(tol[v])
+                   for v in ("rts", "lelast", "kelast")):
+                parent[find(j)] = find(i)
+    groups = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    return sorted(groups.values(), key=lambda g: g[0])
+
+
+def select_root(counts: list, jvals: list, elast: list | None = None, tol: dict | None = None):
+    """Selection rule over distinct roots (coefficient clusters).
+
+    Without `elast` (rule most_starts): the root reached from most starts, ties broken by the
+    smaller J. With `elast` and `tol` (rule most_starts_grouped): roots are first grouped by
+    group_roots; the group with most starts in total wins (ties: smaller J of its
+    representative), and its representative is its member reached from most starts (ties:
+    smaller J). Returns (chosen root index, groups, chosen group index, representatives)."""
+    def rank(i):
+        return (counts[i], -jvals[i])
+
+    if elast is None:
+        groups = [[i] for i in range(len(counts))]
+    else:
+        groups = group_roots(elast, tol)
+    reps = [max(g, key=rank) for g in groups]
+    chosen_g = max(range(len(groups)),
+                   key=lambda gi: (sum(counts[i] for i in groups[gi]), -jvals[reps[gi]]))
+    return reps[chosen_g], groups, chosen_g, reps
 
 
 def _standardized_step2(sub: pd.DataFrame):
@@ -550,11 +612,40 @@ def run_step2_exact(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
     )
     if not fin:
         raise RuntimeError("step 2: no finite root-solve endpoint")
+    sel_cfg = cfg_s2.get("root_selection")
+    rule = sel_cfg["rule"] if sel_cfg else "most_starts"
+    if rule not in ROOT_SELECTION_RULES:
+        raise ValueError(f"step2.root_selection.rule must be one of {ROOT_SELECTION_RULES}, got {rule!r}")
+    grouped = None
     if clusters:
-        # The root reached from most starts; ties broken by the smaller J.
-        best = max(clusters, key=lambda c: (c["count"], -c["J"]))
+        counts = [c["count"] for c in clusters]
+        jv = [c["J"] for c in clusters]
+        if rule == "most_starts_grouped":
+            tol = sel_cfg["group_tol"]
+            elast = [root_elasticities(sub, s1, c["a"]) for c in clusters]
+            chosen, groups, chosen_g, reps = select_root(counts, jv, elast, tol)
+            grouped = {"selection_rule": rule, "group_tol": {v: float(tol[v]) for v in tol},
+                       "root_elasticities": elast, "chosen_root": int(chosen),
+                       "n_groups": len(groups), "chosen_group": int(chosen_g),
+                       "root_groups": [{"members": [int(i) for i in g],
+                                        "starts": int(sum(counts[i] for i in g)),
+                                        "representative": int(r), "elasticities": elast[r]}
+                                       for g, r in zip(groups, reps)]}
+            for gi, g in enumerate(grouped["root_groups"]):
+                e = g["elasticities"]
+                logger.info(f"  root group {gi}{' (chosen)' if gi == chosen_g else ''}: roots "
+                            f"{g['members']}, {g['starts']} starts; mean m {e['melast']['mean']:.3f}, "
+                            f"l {e['lelast']['mean']:.3f}, k {e['kelast']['mean']:.4f}, "
+                            f"RTS {e['rts']['mean']:.3f}")
+            if len(groups) > 1:
+                logger.warning(f"  {len(groups)} economically distinct root groups; using group "
+                               f"{chosen_g} ({grouped['root_groups'][chosen_g]['starts']} of "
+                               f"{len(roots)} root solves), root {chosen}")
+        else:
+            chosen = select_root(counts, jv)[0]
+        best = clusters[chosen]
         a_hat = best["a"]
-        if len(clusters) > 1:
+        if len(clusters) > 1 and grouped is None:
             logger.warning(f"  {len(clusters)} distinct exact roots; using the one reached most often "
                            f"({best['count']} of {len(roots)} root solves)")
     else:
@@ -596,6 +687,7 @@ def run_step2_exact(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
             "J_min": float(jvals.min()), "J_p50": float(np.median(jvals)),
             "J_estimate": j_hat, "root_found": bool(clusters),
             "near_best_count": int(clusters[0]["count"]) if clusters else 0,
+            **(grouped or {}),
         },
         "n_starts": int(len(starts_b)),
         "n_obs": int(len(sub)),

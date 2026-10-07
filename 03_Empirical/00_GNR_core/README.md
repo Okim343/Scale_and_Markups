@@ -37,6 +37,28 @@ step 1 / step 2 result JSONs before and after the move.
   an `fminsearch`-like polish (TolX = TolFun = 1e-4) whose result is kept. The line search is
   scipy's, so this approximates `fminunc` rather than replicating it. On Orbis cell 51 it
   reproduces the MATLAB code's seed-invariant answer (RTS 0.966 vs 0.959 on the same sample).
+- `exact` (Step 2 only; Orbis baseline): `est_gnr.m`'s moments and start set, but each start
+  solves the moment equations g = 0 directly (Levenberg-Marquardt, exact Jacobian, k and l
+  standardized). Endpoints with efficient J < 1e-6 are exact roots; roots whose raw coefficients
+  agree within a relative 1e-5 are one distinct root (`n_distinct_roots`, `root_counts`,
+  `root_alphas` in `local_solution_diagnostics`).
+
+### Root selection under `exact` (`step2.root_selection`)
+
+Step 2 is just identified, so several exact roots can exist; the moments cannot rank them. The rule
+is fixed in advance and the alternatives are reported as robustness.
+
+- Key absent (`most_starts`): the distinct root reached from most starts (ties: smaller J).
+- `rule: most_starts_grouped` with `group_tol: {rts, lelast, kelast}` (Orbis: 0.01, 0.01, 0.005):
+  for every distinct root, the step-2-sample elasticities are computed exactly as
+  `reconstruct_firm_year` does (`root_elasticities`). Two roots are in the same group when their
+  mean RTS, labor and capital elasticities all differ by less than the tolerances (single
+  linkage). The group reached from most starts in total wins; its representative is its member
+  reached most often. Adds `selection_rule`, `group_tol`, `root_elasticities`, `n_groups`,
+  `root_groups` (members, starts, representative, elasticity moments), `chosen_group` and
+  `chosen_root` to `local_solution_diagnostics`, and logs a warning when there is more than one
+  group. Grouping exists because tight coefficient clusters can split near-duplicate roots and
+  hand "most starts" to a different economic solution (Orbis cell 44-45).
 
 ## Trimming modes (`trimming.mode`)
 

@@ -195,7 +195,9 @@ def main():
         "step2": {"fval": s2["fval"], "fval_multistart_best": s2["fval_multistart_best"],
                   **{k: v for k, v in s2["local_solution_diagnostics"].items()
                      if k in ("n_finite", "near_best_count", "n_exact_roots", "n_distinct_roots",
-                              "root_counts", "J_estimate", "root_found")},
+                              "root_counts", "J_estimate", "root_found", "selection_rule",
+                              "group_tol", "chosen_root", "n_groups", "chosen_group",
+                              "root_groups")},
                   "search": s2.get("search", "extended")},
         "materials_share": moments(np.exp(s2s["s"])),
         "melast": moments(s2s["melast"]), "lelast": moments(s2s["lelast"]),

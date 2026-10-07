@@ -131,3 +131,23 @@ An in-memory dry run of R1's `build_panel` + `trim_panel` (nothing written, no e
 - **No 4-digit core NACE.** `naceccod2` is a 3-digit NACE group (`20.1`) for every firm. The only 4-digit
   code is `cnae2009_pcod` (national CNAE 2009 primary = NACE Rev.2 class), which is a *primary* code. The
   concentration stage must choose between NACE 3-digit core and CNAE 4-digit primary.
+
+## GNR step 2: multiple roots and the selection rule
+
+- **Exact root solving (baseline).** Hubmer et al.'s step-2 search stalls at non-stationary points on
+  Orbis cells, so step 2 solves the moment equations directly (`step2.search: exact`, see
+  `03_Empirical/00_GNR_core/README.md`). In 11 of 14 cells there is one exact root, the same under 4 seeds.
+  Cells 11, 44-45 and 71 have 3 distinct roots each (the same 3 under every seed).
+- **Overidentification rejected (option 2).** We tried to let the data pick the root by adding lagged
+  instruments and running two-step efficient GMM. The extra moments are strongly rejected in every cell,
+  including the unique-root controls 42 and 51 (Hansen J 341 and 2,033 with 4 cubic instruments);
+  different instrument sets favour different roots; and two-step RTS moves with the instrument set (cell
+  44: 0.87 to 1.08; cell 42: 0.92 to 1.04). The moments cannot discriminate between roots.
+- **Selection rule (option 3), fixed in advance.** Roots are grouped into economically equivalent
+  solutions (mean RTS and labor elasticity within 0.01, capital elasticity within 0.005, single
+  linkage); the group reached from most starts is the baseline; the other groups are reported in
+  `gnr_cells_report.md` as robustness. Config: `step2.root_selection` in `config_gnr_orbis_es.yaml`.
+  The choice is the same with tolerances at 0.5x to 3x. It changes only cell 44-45, whose two
+  near-duplicate roots (RTS 0.983 and 0.980) were split by the coefficient tolerance and together
+  reach more starts than the RTS 0.904 root.
+

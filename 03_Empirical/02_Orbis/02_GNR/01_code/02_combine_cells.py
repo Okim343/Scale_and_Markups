@@ -3,7 +3,8 @@
 Reads  <output.intermediary_dir>/cells/<ind2d>/{firm_year_rts.parquet, cell_summary.json}
 Writes <output.intermediary_dir>/firm_year_rts.parquet   all finished cells (gitignored)
        <output.intermediary_dir>/cell_diagnostics.csv    one row per cell
-       <output.intermediary_dir>/gnr_cells_report.md     per-cell table vs Hubmer et al. Table A.5
+       <output.intermediary_dir>/gnr_cells_report.md     per-cell table vs Hubmer et al. Table A.5,
+                                                         plus the alternative step-2 root groups
 
 Missing cells are listed, not an error, so this can run while the array is incomplete.
 
@@ -39,7 +40,7 @@ def main():
     inter = resolve(config["output"]["intermediary_dir"])
     lo, hi = config["combine"]["window"]
 
-    frames, rows, missing = [], [], []
+    frames, rows, missing, alt = [], [], [], []
     for cell in config["cells"]["list"]:
         d = inter / "cells" / str(cell)
         if not ((d / "firm_year_rts.parquet").exists() and (d / "cell_summary.json").exists()):
@@ -60,8 +61,24 @@ def main():
         st2 = sm["step2"]
         row["root_found"] = st2.get("root_found")
         row["n_roots"] = st2.get("n_distinct_roots")
-        row["root_starts"] = (f"{st2['root_counts'][0]}/{st2['n_finite']}"
-                              if st2.get("root_counts") else "")
+        row["n_groups"] = st2.get("n_groups")
+        if st2.get("root_groups"):
+            starts = st2["root_groups"][st2["chosen_group"]]["starts"]
+        elif st2.get("root_counts"):
+            starts = max(st2["root_counts"])  # rule most_starts: the root reached most often
+        else:
+            starts = None
+        row["root_starts"] = f"{starts}/{st2['n_finite']}" if starts is not None else ""
+        if len(st2.get("root_groups", [])) > 1:
+            for gi, g in enumerate(st2["root_groups"]):
+                e = g["elasticities"]
+                alt.append({"sector": row["sector"], "group": gi,
+                            "chosen": "yes" if gi == st2["chosen_group"] else "",
+                            "roots": ",".join(map(str, g["members"])), "starts": g["starts"],
+                            **{f"{v}_mean": e[v]["mean"] for v in ["melast", "lelast", "kelast"]},
+                            "rts_mean": e["rts"]["mean"], "rts_p10": e["rts"]["p10"],
+                            "rts_p90": e["rts"]["p90"], "share_l_neg": e["lelast"]["share_neg"],
+                            "share_k_neg": e["kelast"]["share_neg"]})
         row["J_est"] = st2.get("J_estimate", np.nan)
         sc_path = d / "seed_check.json"
         if sc_path.exists():
@@ -70,6 +87,7 @@ def main():
             row["seeds"] = len(sc)
             row["seed_rts_range"] = max(rts) - min(rts)
             row["seed_roots"] = ",".join(str(r.get("n_distinct_roots", "?")) for r in sc)
+            row["seed_groups"] = ",".join(str(r.get("n_groups", "?")) for r in sc)
         row["share_m_neg"] = (w["melast"] < 0).mean()
         row["share_l_neg"] = (w["lelast"] < 0).mean()
         row["share_k_neg"] = (w["kelast"] < 0).mean()
@@ -90,8 +108,9 @@ def main():
         if isinstance(x, float):
             return f"{x:.2g}" if 0 < abs(x) < 1e-3 else f"{x:,.3f}"
         return f"{x:,}" if isinstance(x, (int, np.integer)) else str(x)
-    cols = ["sector", "step2_rows", "firms", "runtime_min", "root_found", "n_roots",
-            "root_starts", "J_est", "seeds", "seed_rts_range", "seed_roots", "melast_mean",
+    cols = ["sector", "step2_rows", "firms", "runtime_min", "root_found", "n_roots", "n_groups",
+            "root_starts", "J_est", "seeds", "seed_rts_range", "seed_roots", "seed_groups",
+            "melast_mean",
             "lelast_mean", "kelast_mean", "rts_mean", "rts_p10", "rts_p90", "share_l_neg",
             "share_k_neg"]
     lines = ["# Orbis Spain GNR by NAICS2 cell", "",
@@ -106,6 +125,14 @@ def main():
         q = w[v].quantile([0.1, 0.5, 0.9]).tolist()
         lines.append(f"| {v} | {w[v].mean():.3f} | {q[0]:.3f} | {q[1]:.3f} | {q[2]:.3f} | "
                      + " | ".join(f"{x:.2f}" for x in ref) + " |")
+    if alt:
+        acols = ["sector", "group", "chosen", "roots", "starts", "melast_mean", "lelast_mean",
+                 "kelast_mean", "rts_mean", "rts_p10", "rts_p90", "share_l_neg", "share_k_neg"]
+        lines += ["", "Step-2 root groups in cells with more than one economically distinct root "
+                  "(robustness; the chosen group is the baseline). Moments on the full step-2 "
+                  "sample of the cell; starts out of the finite root solves:", "",
+                  "| " + " | ".join(acols) + " |", "|" + "---|" * len(acols)]
+        lines += ["| " + " | ".join(fmt(r[c]) for c in acols) + " |" for r in alt]
     (inter / "gnr_cells_report.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

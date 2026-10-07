@@ -15,6 +15,13 @@ Search mode (`search` key in the step1 / step2 config blocks):
       sobol_bounds}, each solved fminunc-like (gnr_model.fminunc_like), best taken among
       converged local solutions (MultiStart rule), then an fminsearch-like Nelder-Mead
       polish (TolX = TolFun = 1e-4, MATLAB defaults) whose result is accepted.
+  exact (Step 2 only): same moments and start set as matlab, but k and l (current and
+      lagged) are centered and scaled before building P2 / IV, and each start solves the
+      moment equations g = 0 by Levenberg-Marquardt with the exact Jacobian
+      (gnr_model.step2_moments_jacobian). Standardizing is a linear reparametrization: it
+      leaves the set of exact roots unchanged; the solution is mapped back to the original
+      P2 coefficients. Every endpoint is reported, with how many are exact roots and how
+      many distinct roots there are.
 
 Step 2's Markov process carries one dummy per industry after the first. With a single
 `ind2d` (within-cell estimation, as Hubmer et al.) there are zero dummy columns and the
@@ -31,7 +38,7 @@ from scipy.optimize import minimize
 
 import gnr_model as gm
 
-SEARCH_MODES = ("extended", "matlab")
+SEARCH_MODES = ("extended", "matlab", "exact")
 
 
 def search_mode(cfg: dict) -> str:
@@ -245,6 +252,8 @@ def step2_arrays(sub: pd.DataFrame, s1: dict, logger):
 def run_step2(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
     if search_mode(cfg_s2) == "matlab":
         return run_step2_matlab(sub, s1, cfg_s2, logger)
+    if search_mode(cfg_s2) == "exact":
+        return run_step2_exact(sub, s1, cfg_s2, logger)
     rt, lrt, p2, lp2, iv, dummies, ind_categories = step2_arrays(sub, s1, logger)
     h2size = int(cfg_s2["h2size"])
     w_mat = np.eye(iv.shape[1])
@@ -465,4 +474,128 @@ def run_step2_matlab(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
         "eta_sd": float(eta.std()),
         "seed": int(cfg_s2["seed"]),
         "search": "matlab",
+    }
+
+
+ROOT_J_TOL = 1e-6        # efficient J below this counts as an exact root
+ROOT_CLUSTER_TOL = 1e-5  # relative distance in original coefficients for "same root"
+
+
+def _standardized_step2(sub: pd.DataFrame):
+    """P2, LP2 and IV built from k, l and lags centered and scaled by the current-period
+    means and SDs, plus the exact linear maps between original (a) and standardized (b)
+    P2 coefficients: P2 a = const + P2s (B a), P2s b = const + P2 (A b)."""
+    k, l, lk, ll = (sub[c].to_numpy() for c in ["k", "l", "lk", "ll"])
+    mk, sk, ml, sl = k.mean(), k.std(), l.mean(), l.std()
+    zk, zl, zlk, zll = (k - mk) / sk, (l - ml) / sl, (lk - mk) / sk, (ll - ml) / sl
+    p2s, lp2s = gm.build_p2(zk, zl), gm.build_p2(zlk, zll)
+    ivs = gm.build_iv(zk, zll)
+    p2 = gm.build_p2(k, l)
+    rows = slice(0, min(len(k), 5000))
+    ones = np.ones((rows.stop, 1))
+    b_of_a = np.linalg.lstsq(np.hstack([ones, p2s[rows]]), p2[rows], rcond=None)[0][1:]
+    a_of_b = np.linalg.lstsq(np.hstack([ones, p2[rows]]), p2s[rows], rcond=None)[0][1:]
+    if not np.allclose(a_of_b @ b_of_a, np.eye(p2.shape[1]), atol=1e-8):
+        raise RuntimeError("standardization map is not invertible")
+    return p2s, lp2s, ivs, b_of_a, a_of_b
+
+
+def run_step2_exact(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
+    """Step 2 by direct root solving (see module docstring, search: exact)."""
+    rt, lrt, p2, lp2, iv, dummies, ind_categories = step2_arrays(sub, s1, logger)
+    h2size = int(cfg_s2["h2size"])
+    w_mat = np.eye(iv.shape[1])
+    n = len(rt)
+    p2s, lp2s, ivs, b_of_a, a_of_b = _standardized_step2(sub)
+
+    # Same start set as search: matlab, expressed in standardized coefficients.
+    x_design = np.column_stack([np.ones(n), -p2])
+    linguess = np.linalg.lstsq(x_design, rt, rcond=None)[0][1:]
+    lo, hi = map(float, cfg_s2["sobol_bounds"])
+    sobol = gm.gensobol(int(cfg_s2["n_sobol"]), gm.P2SIZE, lo, hi, seed=int(cfg_s2["seed"]))
+    starts_a = np.vstack([linguess, np.full(gm.P2SIZE, 1.0e-4), sobol[: int(cfg_s2["n_starts"])]])
+    starts_b = starts_a @ b_of_a.T
+    n_workers = int(cfg_s2.get("n_workers", 1))
+    logger.info(f"  step 2 (search: exact): {len(starts_b)} Levenberg-Marquardt root solves, "
+                "standardized k / l, exact Jacobian")
+
+    t0 = time.time()
+    payload = (rt, lrt, p2s, lp2s, ivs, dummies, h2size)
+    raw = gm.parallel_multistart(gm._step2_solve_exact, starts_b, payload, n_workers)
+    endpoints = []
+    for cost, b, status in raw:
+        if not np.isfinite(cost):
+            endpoints.append({"finite": False, "status": status})
+            continue
+        a = a_of_b @ b
+        g, _, eta, _ = gm.step2_moments_jacobian(a, rt, lrt, p2, lp2, iv, dummies, h2size)
+        hmat = eta[:, None] * iv
+        j_eff = float(n * g @ np.linalg.solve(np.cov(hmat.T), g))
+        endpoints.append({"finite": True, "status": status, "a": a, "J": j_eff,
+                          "fval_orig": float(n * g @ g / 2.0), "cost_std": cost})
+    fin = [e for e in endpoints if e["finite"]]
+    roots = [e for e in fin if e["J"] < ROOT_J_TOL]
+    clusters = []
+    for e in sorted(roots, key=lambda e: e["J"]):
+        for c in clusters:
+            if np.max(np.abs(e["a"] - c["a"]) / (1.0 + np.abs(c["a"]))) < ROOT_CLUSTER_TOL:
+                c["count"] += 1
+                break
+        else:
+            clusters.append({"a": e["a"], "count": 1, "J": e["J"]})
+    logger.info(
+        f"  step 2 root solves: {len(fin)} finite of {len(endpoints)}, {len(roots)} exact roots "
+        f"(J < {ROOT_J_TOL:g}), {len(clusters)} distinct root(s) in {time.time() - t0:.1f}s "
+        f"[{n_workers} worker(s)]"
+    )
+    if not fin:
+        raise RuntimeError("step 2: no finite root-solve endpoint")
+    if clusters:
+        # The root reached from most starts; ties broken by the smaller J.
+        best = max(clusters, key=lambda c: (c["count"], -c["J"]))
+        a_hat = best["a"]
+        if len(clusters) > 1:
+            logger.warning(f"  {len(clusters)} distinct exact roots; using the one reached most often "
+                           f"({best['count']} of {len(roots)} root solves)")
+    else:
+        best_e = min(fin, key=lambda e: e["J"])
+        a_hat = best_e["a"]
+        logger.warning(f"  no exact root reached; using the endpoint with the smallest J ({best_e['J']:.4g})")
+
+    fval, delta, eta = gm.step2_objective_nested(
+        a_hat, rt, lrt, p2, lp2, iv, dummies, h2size, w_mat, return_full=True
+    )
+    omega = rt + p2 @ a_hat
+    logger.info(f"  fval (original W = I objective): {fval:.6g}; "
+                f"sd(omega) = {omega.std():.4f}, sd(eta) = {eta.std():.4f}")
+    jvals = np.asarray([e["J"] for e in fin])
+    return {
+        "alpha": np.asarray(a_hat).tolist(),
+        "delta": delta.tolist(),
+        "delta_layout": {
+            "ind_dummy_categories": ind_categories,
+            "first_category_dropped": True,
+            "n_dummy_cols": int(dummies.shape[1]),
+            "markov_terms": [f"lomega^{p}" for p in range(0, h2size)],
+            "order": "[dummies..., const, lomega, lomega^2, ...]",
+        },
+        "h2size": h2size,
+        "fval": float(fval),
+        "fval_multistart_best": float(min(e["fval_orig"] for e in fin)),
+        "local_solution_diagnostics": {
+            "n_finite": int(len(fin)),
+            "n_converged": int(len(roots)),
+            "n_exact_roots": int(len(roots)),
+            "n_distinct_roots": int(len(clusters)),
+            "root_counts": [int(c["count"]) for c in clusters],
+            "root_alphas": [np.asarray(c["a"]).tolist() for c in clusters],
+            "J_min": float(jvals.min()), "J_p50": float(np.median(jvals)),
+            "near_best_count": int(clusters[0]["count"]) if clusters else 0,
+        },
+        "n_starts": int(len(starts_b)),
+        "n_obs": int(len(sub)),
+        "omega_sd": float(omega.std()),
+        "eta_sd": float(eta.std()),
+        "seed": int(cfg_s2["seed"]),
+        "search": "exact",
     }

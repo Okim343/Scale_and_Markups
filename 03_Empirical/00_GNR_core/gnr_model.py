@@ -387,6 +387,67 @@ def _step2_solve_matlab(x0: np.ndarray) -> tuple[float, np.ndarray, bool]:
     return fminunc_like(obj, x0)
 
 
+# -----------------------------------------------------------------------------
+# Exact Step 2 moments, Jacobian and root solve (search: exact)
+# -----------------------------------------------------------------------------
+def step2_moments_jacobian(a, rt, lrt, p2, lp2, iv, indmat, h2size):
+    """Moments g(a) = IV' eta(a) / N of the nested Step 2 and their exact Jacobian dg/da.
+
+    eta = M_X omega with omega = rt + P2 a, X = [dummies, 1, lomega, ..., lomega^(h-1)],
+    lomega = lrt + LP2 a. Differentiating through the concentrated-out OLS:
+      d eta = M_X (d omega - dX delta) - X (X'X)^-1 dX' eta.
+    Returns (g, J, eta, delta); the objective N g'Wg/2 has gradient N J' W g.
+    """
+    n = rt.shape[0]
+    omega = rt + p2 @ a
+    lomega = lrt + lp2 @ a
+    x = markov_design(lomega, indmat, h2size)
+    xtx = x.T @ x
+    delta = np.linalg.solve(xtx, x.T @ omega)
+    eta = omega - x @ delta
+    n_dum = indmat.shape[1]
+    powers = np.arange(1, h2size)
+    # d(lomega^p)/d lomega = p lomega^(p-1); the Markov slope m'(lomega) = sum_p p delta_p lomega^(p-1)
+    dpow = np.column_stack([p * lomega ** (p - 1) for p in powers])        # n x (h-1)
+    mprime = dpow @ delta[n_dum + 1:]
+    jac = np.empty((iv.shape[1], p2.shape[1]))
+    for j in range(p2.shape[1]):
+        dl = lp2[:, j]
+        v = p2[:, j] - dl * mprime
+        mxv = v - x @ np.linalg.solve(xtx, x.T @ v)
+        dxt_eta = np.zeros(x.shape[1])
+        dxt_eta[n_dum + 1:] = (dpow * (dl * eta)[:, None]).sum(axis=0)
+        deta = mxv - x @ np.linalg.solve(xtx, dxt_eta)
+        jac[:, j] = iv.T @ deta / n
+    g = iv.T @ eta / n
+    return g, jac, eta, delta
+
+
+def _step2_solve_exact(b0: np.ndarray) -> tuple[float, np.ndarray, int]:
+    """One Levenberg-Marquardt solve of the Step 2 moment equations g(b) = 0 with the
+    exact Jacobian, in standardized coordinates. Payload: (rt, lrt, p2s, lp2s, ivs,
+    indmat, h2size). Returns (N g'g / 2, b, least_squares status)."""
+    from scipy.optimize import least_squares
+
+    rt, lrt, p2s, lp2s, ivs, indmat, h2size = _WORKER["payload"]
+    sqrt_n = np.sqrt(rt.shape[0])
+
+    def resid(b):
+        g, _, _, _ = step2_moments_jacobian(b, rt, lrt, p2s, lp2s, ivs, indmat, h2size)
+        return sqrt_n * g
+
+    def jac(b):
+        _, jm, _, _ = step2_moments_jacobian(b, rt, lrt, p2s, lp2s, ivs, indmat, h2size)
+        return sqrt_n * jm
+
+    try:
+        res = least_squares(resid, b0, jac=jac, method="lm", xtol=1e-15, ftol=1e-15,
+                            gtol=1e-15, max_nfev=2000)
+    except (np.linalg.LinAlgError, ValueError):
+        return np.inf, np.asarray(b0, dtype=float), -99
+    return float(res.cost), np.asarray(res.x), int(res.status)
+
+
 def parallel_multistart(solver, starts: np.ndarray, payload: tuple, n_workers: int):
     """Run `solver` (_step1_solve / _step2_solve / _step2_solve_matlab) from every starting
     point, on `n_workers` processes (serial when n_workers <= 1). Returns the

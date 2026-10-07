@@ -84,7 +84,12 @@ step1:
 
 # --- Step 2: nested GMM (integration constant + productivity Markov process) ---
 step2:
-  search: matlab          # see step1.search; economic/wide starts below are unused under matlab
+  # "exact" (baseline): est_gnr.m's moments and start set, solved as a root of the moment
+  # equations (standardized k / l, Levenberg-Marquardt, exact Jacobian); every endpoint is
+  # checked and the number of exact / distinct roots reported. "matlab" reproduces
+  # est_gnr.m's own fminunc search (replication check; stalls on Orbis cells, see
+  # 05_step2_diagnostics.py). economic/wide starts below are unused under both.
+  search: exact
   seed: 1982
   n_workers: 10
   n_sobol: 500

@@ -566,6 +566,10 @@ def run_step2_exact(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
         a_hat, rt, lrt, p2, lp2, iv, dummies, h2size, w_mat, return_full=True
     )
     omega = rt + p2 @ a_hat
+    hmat = eta[:, None] * iv
+    g_hat = hmat.mean(axis=0)
+    j_hat = float(n * g_hat @ np.linalg.solve(np.cov(hmat.T), g_hat))
+    logger.info(f"  J at the estimate: {j_hat:.3g}")
     logger.info(f"  fval (original W = I objective): {fval:.6g}; "
                 f"sd(omega) = {omega.std():.4f}, sd(eta) = {eta.std():.4f}")
     jvals = np.asarray([e["J"] for e in fin])
@@ -590,6 +594,7 @@ def run_step2_exact(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
             "root_counts": [int(c["count"]) for c in clusters],
             "root_alphas": [np.asarray(c["a"]).tolist() for c in clusters],
             "J_min": float(jvals.min()), "J_p50": float(np.median(jvals)),
+            "J_estimate": j_hat, "root_found": bool(clusters),
             "near_best_count": int(clusters[0]["count"]) if clusters else 0,
         },
         "n_starts": int(len(starts_b)),

@@ -57,6 +57,19 @@ def main():
             row[f"{v}_mean"] = w[v].mean()
             row[f"{v}_p10"] = w[v].quantile(0.1)
             row[f"{v}_p90"] = w[v].quantile(0.9)
+        st2 = sm["step2"]
+        row["root_found"] = st2.get("root_found")
+        row["n_roots"] = st2.get("n_distinct_roots")
+        row["root_starts"] = (f"{st2['root_counts'][0]}/{st2['n_finite']}"
+                              if st2.get("root_counts") else "")
+        row["J_est"] = st2.get("J_estimate", np.nan)
+        sc_path = d / "seed_check.json"
+        if sc_path.exists():
+            sc = json.loads(sc_path.read_text())["results"]
+            rts = [r["rts_mean"] for r in sc]
+            row["seeds"] = len(sc)
+            row["seed_rts_range"] = max(rts) - min(rts)
+            row["seed_roots"] = ",".join(str(r.get("n_distinct_roots", "?")) for r in sc)
         row["share_m_neg"] = (w["melast"] < 0).mean()
         row["share_l_neg"] = (w["lelast"] < 0).mean()
         row["share_k_neg"] = (w["kelast"] < 0).mean()
@@ -71,15 +84,21 @@ def main():
     diag.to_csv(inter / "cell_diagnostics.csv", index=False)
 
     w = panel[panel["in_step2_sample"] & panel["year"].between(lo, hi)]
-    fmt = lambda x: f"{x:,.3f}" if isinstance(x, float) else (f"{x:,}" if isinstance(x, (int, np.integer)) else str(x))
-    cols = ["sector", "step2_rows", "firms", "runtime_min", "melast_mean", "lelast_mean",
-            "kelast_mean", "rts_mean", "rts_p10", "rts_p90", "share_l_neg", "share_k_neg",
-            "s2_near_best"]
+    def fmt(x):
+        if isinstance(x, (bool, np.bool_)):
+            return "yes" if x else "NO"
+        if isinstance(x, float):
+            return f"{x:.2g}" if 0 < abs(x) < 1e-3 else f"{x:,.3f}"
+        return f"{x:,}" if isinstance(x, (int, np.integer)) else str(x)
+    cols = ["sector", "step2_rows", "firms", "runtime_min", "root_found", "n_roots",
+            "root_starts", "J_est", "seeds", "seed_rts_range", "seed_roots", "melast_mean",
+            "lelast_mean", "kelast_mean", "rts_mean", "rts_p10", "rts_p90", "share_l_neg",
+            "share_k_neg"]
     lines = ["# Orbis Spain GNR by NAICS2 cell", "",
              f"Step-2 firm-years, {lo}-{hi}. Finished cells: {len(rows)} of "
              f"{len(config['cells']['list'])}" + (f"; missing: {missing}" if missing else "") + ".", "",
              "| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
-    lines += ["| " + " | ".join(fmt(r[c]) for c in cols) + " |" for r in rows]
+    lines += ["| " + " | ".join(fmt(r.get(c, "")) for c in cols) + " |" for r in rows]
     lines += ["", "Pooled over finished cells vs Hubmer et al. Table A.5, Spain (all cells):", "",
               "| object | ours mean | ours P10 | ours P50 | ours P90 | Hubmer mean | P10 | P50 | P90 |",
               "|---|---|---|---|---|---|---|---|---|"]

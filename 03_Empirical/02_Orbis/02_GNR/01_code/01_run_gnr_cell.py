@@ -193,7 +193,10 @@ def main():
         "step1": {k: s1[k] for k in ["fval", "fval_multistart_best", "n_starts",
                                     "n_feasible_solutions", "bigeps"]},
         "step2": {"fval": s2["fval"], "fval_multistart_best": s2["fval_multistart_best"],
-                  **{k: s2["local_solution_diagnostics"][k] for k in ["n_finite", "near_best_count"]}},
+                  **{k: v for k, v in s2["local_solution_diagnostics"].items()
+                     if k in ("n_finite", "near_best_count", "n_exact_roots", "n_distinct_roots",
+                              "root_counts", "J_estimate", "root_found")},
+                  "search": s2.get("search", "extended")},
         "materials_share": moments(np.exp(s2s["s"])),
         "melast": moments(s2s["melast"]), "lelast": moments(s2s["lelast"]),
         "kelast": moments(s2s["kelast"]), "rts": moments(s2s["rts"]),

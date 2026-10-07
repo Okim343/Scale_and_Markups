@@ -1,0 +1,33 @@
+# =============================================================================
+# Orbis Spain moments bundle (model inputs), built step by step:
+#   01_build_F_alpha.py     pooled scalability distribution F(alpha) from the GNR estimates
+#   (later steps: markup moments from 03_Markups, bundle assembly, figures)
+#
+# Outputs stay under the gitignored 01_intermediary/ and 03_outdata/ (WRDS derivatives).
+# All relative paths resolve against the project root.
+# =============================================================================
+
+# --- Inputs --------------------------------------------------------------------
+gnr:
+  # Final GNR estimates written by 02_GNR/01_code/02_combine_cells.py.
+  outdata_dir: "03_Empirical/02_Orbis/02_GNR/03_outdata"
+  id_col: bvdid
+
+# --- Pooled scalability distribution F(alpha) (step 01) -------------------------
+# One pooled distribution over all Spanish firms in every GNR cell (no sector dimension, as
+# the model expects). alpha is the GNR returns to scale, melast + lelast + kelast, used as
+# estimated: no KLEMS labor imputation, no dispersion shrink and no clip, which existed only
+# to counter Compustat's labor data. Values above 1 are kept.
+F_alpha:
+  alpha_col: rts                # GNR returns to scale (= alpha_gross_output)
+  window: [2015, 2023]          # full Orbis estimation window
+  collapse: firm_mean           # firm_mean: one unit per firm (window-mean alpha); firm_year: robustness
+  winsor_pct: [0.01, 0.99]      # pooled winsorization of the firm units before the quantiles
+  n_nodes: 500                  # equal-mass support points at u_k = (k - 0.5) / N
+  min_obs: 1000                 # hard error below this many pooled units
+
+# --- Outputs -----------------------------------------------------------------------
+output:
+  intermediary_dir: "03_Empirical/02_Orbis/04_Moments/01_intermediary"
+
+log_level: INFO

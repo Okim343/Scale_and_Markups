@@ -47,6 +47,10 @@ cells:
 
 # --- Trimming (mirrors est_gnr.m) ---------------------------------------------
 trimming:
+  # "matlab": est_gnr.m's joint trimsel on the complete-case sample (percentile cuts on
+  # r, k, l, m only, MATLAB prctile, pre-trim industry/year counts); "extended": the
+  # Compustat pipeline's sequential trimming. See 00_GNR_core/gnr_panel.py.
+  mode: matlab
   # exp(s) = materials share of revenue must lie in this band (MATLAB sselectortwo).
   share_bounds: [0.05, 0.95]
   # Percentile trim on r, k, l, m, s (MATLAB mincut/maxcut; 1/100 trims the

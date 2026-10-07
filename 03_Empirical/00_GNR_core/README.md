@@ -36,13 +36,22 @@ step 1 / step 2 result JSONs before and after the move.
   positive exit flags, including flag 5, "cannot decrease along the search direction"); then
   an `fminsearch`-like polish (TolX = TolFun = 1e-4) whose result is kept. The line search is
   scipy's, so this approximates `fminunc` rather than replicating it. On Orbis cell 51 it
-  reproduces the MATLAB code's seed-invariant answer (RTS 0.94 vs 0.96; the gap is a trimming
-  difference, below).
+  reproduces the MATLAB code's seed-invariant answer (RTS 0.966 vs 0.959 on the same sample).
 
-Known remaining divergence from `est_gnr.m`: `gnr_panel.trim_panel` applies the 1% percentile
-trim after the materials-share band and counts industry / year sizes after trimming; the
-MATLAB code computes percentiles and counts on the untrimmed sample. On Orbis cell 51 this
-keeps 35,474 vs 36,119 rows.
+## Trimming modes (`trimming.mode`)
+
+- `extended` (default; Compustat): sequential. Share band, then 1% percentile cuts on r, k, l,
+  m, s computed on the survivors, then industry / year minimum sizes on the trimmed sample.
+- `matlab` (Orbis config): `est_gnr.m`'s `trimsel`. Percentile cuts on r, k, l, m only (its
+  `sselector` on s is computed but never applied), with MATLAB `prctile` interpolation
+  (Hazen), the share band, and industry / year counts, all evaluated on the complete-case
+  sample and applied jointly. Reproduces the MATLAB sample exactly on Orbis cells 51 (36,119
+  rows) and 42 (481,107), and the Step 1 objective to six digits.
+
+With `search: matlab` and `trimming.mode: matlab` the remaining differences from MATLAB are the
+Sobol starting points (scipy's scrambled Sobol cannot reproduce MATLAB's) and the line search.
+Where the Step 2 objective is multimodal these send the two codes to different local minima
+(Orbis cell 42), so results match MATLAB in distribution, not point by point.
 
 ## Using it
 

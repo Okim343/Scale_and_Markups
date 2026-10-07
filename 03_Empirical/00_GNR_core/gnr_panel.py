@@ -84,8 +84,18 @@ def construct_gnr_vars(
 
 
 def trim_panel(df: pd.DataFrame, config: dict, logger) -> pd.DataFrame:
-    """Estimation-sample restrictions, mirroring est_gnr.m. Reads config["trimming"]
-    and config["panel"] (require_wages, min_final_rows)."""
+    """Estimation-sample restrictions. Reads config["trimming"] (incl. optional `mode`)
+    and config["panel"] (require_wages, min_final_rows).
+
+    trimming.mode:
+      extended (default, Compustat): sequential. Share band first, then the percentile
+          trim on r, k, l, m, s computed on the share-band survivors, then industry and
+          year minimum sizes counted on the trimmed sample.
+      matlab: est_gnr.m's trimsel. Percentile cuts on r, k, l, m (its sselector on s is
+          computed but never applied) with MATLAB prctile interpolation, the share band,
+          and industry / year counts, all evaluated on the complete-case sample and
+          applied jointly.
+    """
     cfg_trim = config["trimming"]
     require_wages = bool(config["panel"].get("require_wages", False))
 
@@ -101,6 +111,40 @@ def trim_panel(df: pd.DataFrame, config: dict, logger) -> pd.DataFrame:
     if len(est) == 0:
         raise ValueError("estimation sample is empty after complete-case filter")
 
+    mode = cfg_trim.get("mode", "extended")
+    if mode == "matlab":
+        est = _trim_matlab(est, cfg_trim, logger)
+    elif mode == "extended":
+        est = _trim_extended(est, cfg_trim, logger)
+    else:
+        raise ValueError(f"trimming.mode must be 'extended' or 'matlab', got {mode!r}")
+
+    logger.info(f"  final estimation sample: {len(est):,} rows")
+    min_final = config["panel"].get("min_final_rows")
+    if min_final is not None and len(est) < int(min_final):
+        raise ValueError(
+            f"final estimation sample has {len(est):,} rows, below "
+            f"panel.min_final_rows={int(min_final):,}. This guardrail is meant "
+            "to catch accidental row-universe changes before GNR estimation."
+        )
+    if len(est) == 0:
+        raise ValueError("estimation sample is empty after trimming")
+
+    # Summary diagnostics
+    logger.info(
+        f"  industries retained ({est['ind2d'].nunique()}): "
+        f"{sorted(est['ind2d'].unique().tolist())}"
+    )
+    logger.info(
+        f"  years: {int(est['year'].min())}-{int(est['year'].max())}; "
+        f"firms: {est['gvkey'].nunique():,}; "
+        f"wage coverage in sample: {est['has_w'].mean():.1%}"
+    )
+    return est.reset_index(drop=True)
+
+
+def _trim_extended(est: pd.DataFrame, cfg_trim: dict, logger) -> pd.DataFrame:
+    """Sequential trimming (original Python pipeline; trimming.mode: extended)."""
     # 1) materials-share band: exp(s) in [lo, hi]
     lo, hi = map(float, cfg_trim["share_bounds"])
     share = np.exp(est["s"])
@@ -148,25 +192,32 @@ def trim_panel(df: pd.DataFrame, config: dict, logger) -> pd.DataFrame:
         )
         est = est[~est["year"].isin(small_years)]
 
-    logger.info(f"  final estimation sample: {len(est):,} rows")
-    min_final = config["panel"].get("min_final_rows")
-    if min_final is not None and len(est) < int(min_final):
-        raise ValueError(
-            f"final estimation sample has {len(est):,} rows, below "
-            f"panel.min_final_rows={int(min_final):,}. This guardrail is meant "
-            "to catch accidental row-universe changes before GNR estimation."
-        )
-    if len(est) == 0:
-        raise ValueError("estimation sample is empty after trimming")
+    return est
 
-    # Summary diagnostics
+
+def _trim_matlab(est: pd.DataFrame, cfg_trim: dict, logger) -> pd.DataFrame:
+    """est_gnr.m's trimsel = r, k, l, m percentile cuts x share band x industry size x year
+    size, all evaluated on the complete-case sample and applied jointly."""
+    n0 = len(est)
+    mincut = float(cfg_trim["pctile_mincut"])
+    maxcut = float(cfg_trim["pctile_maxcut"])
+    sel = pd.Series(True, index=est.index)
+    for v in ["r", "k", "l", "m"]:
+        # MATLAB prctile = Hazen plotting positions ((i - 0.5) / n)
+        lo_v, hi_v = np.percentile(est[v], [mincut, maxcut], method="hazen")
+        sel &= (est[v] >= lo_v) & (est[v] <= hi_v)
+    n_pct = int((~sel).sum())
+    lo, hi = map(float, cfg_trim["share_bounds"])
+    share = np.exp(est["s"])
+    share_ok = (share >= lo) & (share <= hi)
+    ind_ok = (est["ind2d"] > 0) & (
+        est.groupby("ind2d")["ind2d"].transform("size") >= int(cfg_trim["ind_min_obs"]))
+    yr_ok = est.groupby("year")["year"].transform("size") >= int(cfg_trim["year_min_obs"])
+    keep = sel & share_ok & ind_ok & yr_ok
     logger.info(
-        f"  industries retained ({est['ind2d'].nunique()}): "
-        f"{sorted(est['ind2d'].unique().tolist())}"
+        f"  est_gnr.m trimming (joint, on {n0:,} complete-case rows): percentile cut on "
+        f"r,k,l,m flags {n_pct:,}; share band flags {int((~share_ok).sum()):,}; small "
+        f"industries flag {int((~ind_ok).sum()):,}; small years flag {int((~yr_ok).sum()):,}; "
+        f"keep {int(keep.sum()):,}"
     )
-    logger.info(
-        f"  years: {int(est['year'].min())}-{int(est['year'].max())}; "
-        f"firms: {est['gvkey'].nunique():,}; "
-        f"wage coverage in sample: {est['has_w'].mean():.1%}"
-    )
-    return est.reset_index(drop=True)
+    return est[keep]

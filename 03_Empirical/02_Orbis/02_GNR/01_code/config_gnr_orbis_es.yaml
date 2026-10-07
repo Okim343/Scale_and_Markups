@@ -90,6 +90,14 @@ step2:
   # est_gnr.m's own fminunc search (replication check; stalls on Orbis cells, see
   # 05_step2_diagnostics.py). economic/wide starts below are unused under both.
   search: exact
+  # Root selection under search: exact (fixed in advance; alternatives are reported as
+  # robustness). Distinct roots are grouped (single linkage) when their step-2-sample mean
+  # RTS, labor and capital elasticities differ by less than group_tol; the group reached
+  # from most starts wins, represented by its member reached most often. Absent: the
+  # distinct root reached from most starts.
+  root_selection:
+    rule: most_starts_grouped
+    group_tol: {rts: 0.01, lelast: 0.01, kelast: 0.005}
   seed: 1982
   n_workers: 10
   n_sobol: 500

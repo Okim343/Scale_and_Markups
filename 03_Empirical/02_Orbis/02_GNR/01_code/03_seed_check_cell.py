@@ -83,8 +83,13 @@ def main():
              "max_abs_moment_in_se": float(np.max(np.abs(g) / (h.std(axis=0) / np.sqrt(n)))),
              "near_best": s2["local_solution_diagnostics"]["near_best_count"],
              "n_finite": s2["local_solution_diagnostics"]["n_finite"],
-             **{k: s2["local_solution_diagnostics"][k] for k in ("n_exact_roots", "n_distinct_roots")
+             **{k: s2["local_solution_diagnostics"][k]
+                for k in ("n_exact_roots", "n_distinct_roots", "root_counts", "n_groups",
+                          "chosen_group", "chosen_root")
                 if k in s2["local_solution_diagnostics"]},
+             "chosen_group_starts": (s2["local_solution_diagnostics"]["root_groups"]
+                                     [s2["local_solution_diagnostics"]["chosen_group"]]["starts"]
+                                     if "root_groups" in s2["local_solution_diagnostics"] else None),
              "alpha": s2["alpha"],
              "kelast_mean": float(fy["kelast"].mean()), "lelast_mean": float(fy["lelast"].mean()),
              "melast_mean": float(fy["melast"].mean()), "rts_mean": float(fy["rts"].mean()),
@@ -92,7 +97,9 @@ def main():
              "runtime_s": round(time.time() - t0, 1)}
         results.append(r)
         logger.info(f"seed {seed}: fval {r['fval']:.3g}, J {J:.2f}, k {r['kelast_mean']:.4f}, "
-                    f"l {r['lelast_mean']:.4f}, RTS {r['rts_mean']:.4f} "
+                    f"l {r['lelast_mean']:.4f}, RTS {r['rts_mean']:.4f}; roots "
+                    f"{r.get('n_distinct_roots', '?')}, groups {r.get('n_groups', '?')}, chosen group "
+                    f"{r.get('chosen_group', '?')} ({r['chosen_group_starts']} starts) "
                     f"({r['runtime_s']:.0f}s)")
         (out / "seed_check.json").write_text(json.dumps(
             {"cell": args.cell, "n_step2": n, "chi2_5_crit": CHI2_5_95, "results": results}, indent=2))

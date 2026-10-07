@@ -83,6 +83,8 @@ def main():
              "max_abs_moment_in_se": float(np.max(np.abs(g) / (h.std(axis=0) / np.sqrt(n)))),
              "near_best": s2["local_solution_diagnostics"]["near_best_count"],
              "n_finite": s2["local_solution_diagnostics"]["n_finite"],
+             **{k: s2["local_solution_diagnostics"][k] for k in ("n_exact_roots", "n_distinct_roots")
+                if k in s2["local_solution_diagnostics"]},
              "alpha": s2["alpha"],
              "kelast_mean": float(fy["kelast"].mean()), "lelast_mean": float(fy["lelast"].mean()),
              "melast_mean": float(fy["melast"].mean()), "rts_mean": float(fy["rts"].mean()),

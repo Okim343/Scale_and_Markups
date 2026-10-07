@@ -165,3 +165,14 @@ groups), `cell_diagnostics.csv` and `manifest.yaml` (commit, config hash, cell f
 Fingerprints hash the content of each cell's input rows and the settings, not file paths, so results computed
 on the workstation are recognised locally.
 
+
+## Moments bundle: F(alpha)
+
+`03_Empirical/02_Orbis/04_Moments/01_code/01_build_F_alpha.py` (config `config_moments_orbis_es.yaml`) builds
+the pooled scalability distribution the model samples: step-2 firm-years 2015-2023 from the final GNR
+estimates, one unit per firm (window-mean `rts`), winsorized at 1/99, 500 equal-mass nodes
+(`node_id, u, weight, alpha`). alpha is the GNR returns to scale as estimated. The Compustat builder's KLEMS
+labor imputation, dispersion shrink (lambda = 0.371) and [0.6, 1.2] clip all countered Compustat's labor data
+and are not used; values above 1 are kept, and the model's `draw_pool` imposes no bound. Output:
+`04_Moments/01_intermediary/F_alpha.parquet` plus `F_alpha_manifest.yaml` (gitignored); later steps add the
+markup moments and assemble the bundle in `04_Moments/03_outdata/`.

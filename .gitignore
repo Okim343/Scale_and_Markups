@@ -135,5 +135,6 @@ XX_mdfiles/*
 # already cover these; the explicit rules guard against a future folder rename.
 03_Empirical/02_Orbis/**/00_indata/
 03_Empirical/02_Orbis/**/01_intermediary/
+03_Empirical/02_Orbis/**/03_outdata/
 03_Empirical/02_Orbis/**/*.parquet
 03_Empirical/02_Orbis/**/*.dta

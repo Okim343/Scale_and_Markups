@@ -29,17 +29,12 @@ step 1 / step 2 result JSONs before and after the move.
   wide Sobol starts in [-3, 3], solves each with scipy BFGS, and keeps the polish only if it
   improves the objective. Output is identical to before the switch existed (Compustat smoke
   run: equal step 1 / step 2 JSONs and `firm_year_rts`).
-- `matlab` (Orbis config): `est_gnr.m`'s search. Its start sets only; Step 2 local solves are
-  `gnr_model.fminunc_like` (R2026a `fminunc` quasi-newton defaults: forward differences with
-  step sqrt(eps)*max(|x|,1), relative optimality / step tolerance 1e-6, 400 iterations, 100
-  evaluations per variable); the best solution is taken among converged runs (MultiStart's
-  positive exit flags, including flag 5, "cannot decrease along the search direction"); then
-  an `fminsearch`-like polish (TolX = TolFun = 1e-4) whose result is kept. The line search is
-  scipy's, so this approximates `fminunc` rather than replicating it. On Orbis cell 51 it
-  reproduces the MATLAB code's seed-invariant answer (RTS 0.966 vs 0.959 on the same sample).
+- `matlab` (Step 1 only; Orbis config): `est_gnr.m`'s Step 1 start set, and an `fminsearch`-like
+  polish (TolX = TolFun = 1e-4) whose result is kept.
 - `exact` (Step 2 only; Orbis baseline): `est_gnr.m`'s moments and start set, but each start
   solves the moment equations g = 0 directly (Levenberg-Marquardt, exact Jacobian, k and l
-  standardized). Endpoints with efficient J < 1e-6 are exact roots; roots whose raw coefficients
+  standardized). `est_gnr.m`'s own `fminunc` search stalls at non-stationary points on Orbis
+  cells, which is why Step 2 solves for roots instead. Endpoints with efficient J < 1e-6 are exact roots; roots whose raw coefficients
   agree within a relative 1e-5 are one distinct root (`n_distinct_roots`, `root_counts`,
   `root_alphas` in `local_solution_diagnostics`).
 
@@ -70,10 +65,8 @@ is fixed in advance and the alternatives are reported as robustness.
   sample and applied jointly. Reproduces the MATLAB sample exactly on Orbis cells 51 (36,119
   rows) and 42 (481,107), and the Step 1 objective to six digits.
 
-With `search: matlab` and `trimming.mode: matlab` the remaining differences from MATLAB are the
-Sobol starting points (scipy's scrambled Sobol cannot reproduce MATLAB's) and the line search.
-Where the Step 2 objective is multimodal these send the two codes to different local minima
-(Orbis cell 42), so results match MATLAB in distribution, not point by point.
+With Step 1 `search: matlab` and `trimming.mode: matlab` the only remaining Step 1 difference
+from MATLAB is the Sobol starting points (scipy's scrambled Sobol cannot reproduce MATLAB's).
 
 ## Using it
 

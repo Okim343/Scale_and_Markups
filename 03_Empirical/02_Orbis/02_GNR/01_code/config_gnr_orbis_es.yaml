@@ -7,7 +7,9 @@
 # percentile cut, minimum year size) is applied within the cell.
 #
 #   python 01_run_gnr_cell.py --cell 21          # one cell
-#   python 02_combine_cells.py                   # stack finished cells
+#   python 03_seed_check_cell.py --cell 21       # step 2 under other Sobol seeds
+#   python 02_combine_cells.py                   # stack cells; final 03_outdata/ when complete
+#   sbatch 01_code/run_all_cells.slurm           # all of the above on the lab workstation
 #
 # Outputs are firm-level WRDS derivatives: they stay under the gitignored
 # 01_intermediary/ and are never published to the Compustat alpha pipeline.
@@ -53,7 +55,7 @@ trimming:
   mode: matlab
   # exp(s) = materials share of revenue must lie in this band (MATLAB sselectortwo).
   share_bounds: [0.05, 0.95]
-  # Percentile trim on r, k, l, m, s (MATLAB mincut/maxcut; 1/100 trims the
+  # Percentile trim on r, k, l, m (MATLAB mincut/maxcut; 1/100 trims the
   # bottom 1% of each variable and nothing at the top).
   pctile_mincut: 1
   pctile_maxcut: 100
@@ -63,9 +65,8 @@ trimming:
 
 # --- Step 1: NLS share regression (materials elasticity) -----------------------
 step1:
-  # Search: "matlab" replicates est_gnr.m (its start set, fminunc-like local solves,
-  # fminsearch-like polish); "extended" is the Compustat pipeline's wider multistart.
-  # See 03_Empirical/00_GNR_core/gnr_estimate.py.
+  # Search "matlab": est_gnr.m's start set (OLS guess, gamma0, 2*gamma0, Sobol points),
+  # L-BFGS-B local solves, fminsearch-like polish. See 00_GNR_core/README.md.
   search: matlab
   seed: 2020
   n_workers: 10        # parallel multistart processes (1 = serial)
@@ -77,18 +78,15 @@ step1:
     intercept: [-2.0, 2.0]
     mid: [-0.5, 0.5]
     tail: [-0.1, 0.1]
-  n_ols_jitter: 20      # extra starts jittered around the OLS guess
-  ols_jitter_scale: 0.25
   maxiter_local: 2000   # per-start L-BFGS-B iterations
   maxfev_polish: 10000  # Nelder-Mead polish budget (MATLAB fminsearch MaxFunEvals)
 
 # --- Step 2: nested GMM (integration constant + productivity Markov process) ---
 step2:
-  # "exact" (baseline): est_gnr.m's moments and start set, solved as a root of the moment
-  # equations (standardized k / l, Levenberg-Marquardt, exact Jacobian); every endpoint is
-  # checked and the number of exact / distinct roots reported. "matlab" reproduces
-  # est_gnr.m's own fminunc search (replication check; stalls on Orbis cells, see
-  # 05_step2_diagnostics.py). economic/wide starts below are unused under both.
+  # "exact": est_gnr.m's moments and start set (OLS guess, alpha0, n_starts Sobol points),
+  # solved as roots of the moment equations (standardized k / l, Levenberg-Marquardt, exact
+  # Jacobian); every endpoint is checked and the number of exact / distinct roots reported.
+  # est_gnr.m's own fminunc search stalls at non-stationary points on Orbis cells.
   search: exact
   # Root selection under search: exact (fixed in advance; alternatives are reported as
   # robustness). Distinct roots are grouped (single linkage) when their step-2-sample mean
@@ -103,15 +101,7 @@ step2:
   n_sobol: 500
   n_starts: 100
   sobol_bounds: [-1.0, 1.0]
-  wide_sobol_bounds: [-3.0, 3.0]
-  n_wide_starts: 50
-  economic_starts:
-    - [1.67857926, -1.51049733, -0.08923862, 0.01331914, 0.09286090]
-    - [1.0, -1.0, 0.0, 0.0, 0.0]
   h2size: 4             # cubic Markov process (MATLAB h2size = 4)
-  maxiter_local: 1000
-  maxfev_polish: 10000
-  maxiter_polish: 5000
 
 # --- Post-processing ------------------------------------------------------------
 postprocess:
@@ -125,6 +115,9 @@ combine:
 # --- Output locations ------------------------------------------------------------
 output:
   intermediary_dir: "03_Empirical/02_Orbis/02_GNR/01_intermediary"   # cells/<ind2d>/, combined files
+  # Final estimates for downstream use (F^alpha, markups): firm_year_rts.parquet + manifest.yaml.
+  # Written by 02_combine_cells.py only when all cells ran with this config. Gitignored.
+  outdata_dir: "03_Empirical/02_Orbis/02_GNR/03_outdata"
 
 # --- Logging ----------------------------------------------------------------------
 log_level: INFO

@@ -5,6 +5,10 @@ Writes <output.intermediary_dir>/firm_year_rts.parquet   all finished cells (git
        <output.intermediary_dir>/cell_diagnostics.csv    one row per cell
        <output.intermediary_dir>/gnr_cells_report.md     per-cell table vs Hubmer et al. Table A.5,
                                                          plus the alternative step-2 root groups
+       <output.outdata_dir>/{firm_year_rts.parquet, gnr_cells_report.md, cell_diagnostics.csv,
+                             manifest.yaml}              the final GNR estimates (gitignored), only
+                                                         when every cell is finished with the
+                                                         current config (fingerprints match)
 
 Missing cells are listed, not an error, so this can run while the array is incomplete.
 
@@ -12,7 +16,12 @@ Missing cells are listed, not an error, so this can run while the array is incom
 """
 
 import argparse
+import datetime
+import hashlib
+import importlib.util
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -32,6 +41,69 @@ def resolve(p):
     return p if p.is_absolute() else PROJECT_ROOT / p
 
 
+def load_driver():
+    spec = importlib.util.spec_from_file_location("gnr_cell_driver", CODE / "01_run_gnr_cell.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def git_state():
+    def git(*a):
+        return subprocess.run(["git", *a], cwd=PROJECT_ROOT, capture_output=True, text=True).stdout.strip()
+    try:
+        return {"commit": git("rev-parse", "HEAD") or None, "branch": git("rev-parse", "--abbrev-ref", "HEAD") or None,
+                "code_dirty": bool(git("status", "--porcelain", "--", "03_Empirical/00_GNR_core",
+                                       "03_Empirical/02_Orbis/02_GNR/01_code"))}
+    except OSError:
+        return {"commit": None, "branch": None, "code_dirty": None}
+
+
+def write_outdata(config, config_path, inter, panel, rows, fps):
+    """Copy the combined panel and reports to output.outdata_dir with a manifest."""
+    out = resolve(config["output"]["outdata_dir"])
+    out.mkdir(parents=True, exist_ok=True)
+    panel.to_parquet(out / "firm_year_rts.parquet", index=False)
+    for f in ("gnr_cells_report.md", "cell_diagnostics.csv"):
+        shutil.copy2(inter / f, out / f)
+    lo, hi = config["combine"]["window"]
+    w = panel[panel["in_step2_sample"] & panel["year"].between(lo, hi)]
+    manifest = {
+        "description": "Orbis Spain GNR gross-output production function, estimated per NAICS2 "
+                       "cell (ind2d); firm-year elasticities and returns to scale.",
+        "created_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        **git_state(),
+        "pipeline_version": config.get("pipeline_version"),
+        "config": (str(config_path.resolve().relative_to(PROJECT_ROOT))
+                   if config_path.resolve().is_relative_to(PROJECT_ROOT) else str(config_path)),
+        "config_sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
+        "input": config["input"]["source"],
+        "cells": [int(c) for c in config["cells"]["list"]],
+        "cell_fingerprints": {str(c): fp for c, fp in fps.items()},
+        "step2_search": config["step2"].get("search"),
+        "root_selection": config["step2"].get("root_selection"),
+        "rows": {"total": int(len(panel)), "in_step2_sample": int(panel["in_step2_sample"].sum()),
+                 f"in_step2_sample_{lo}_{hi}": int(len(w)), "firms_step2": int(w["bvdid"].nunique())},
+        "years": [int(panel["year"].min()), int(panel["year"].max())],
+        "columns": {
+            "bvdid": "Orbis firm id", "year": "fiscal year", "ind2d": "NAICS2 cell (31 = 31-33, "
+            "44 = 44-45, 48 = 48-49)", "s, r, k, m, l": "logs: materials share of revenue, "
+            "deflated revenue, capital (tfas), materials, labor (wage bill)",
+            "eps, melast": "step 1 residual and materials elasticity (all trimmed rows)",
+            "kelast, lelast, omega, lomega, eta": "step 2 objects (NaN outside the step 2 sample)",
+            "rts = alpha_gross_output": "melast + lelast + kelast",
+            "in_step2_sample": "row has a consecutive lag and a feasible lagged share polynomial",
+            "rts_outlier_flag": f"rts outside {config['postprocess']['rts_flag_range']} "
+                                "(flagged, not dropped)"},
+        "pooled_step2_moments": {v: {"mean": float(w[v].mean()), "p10": float(w[v].quantile(0.1)),
+                                     "p50": float(w[v].median()), "p90": float(w[v].quantile(0.9))}
+                                 for v in ["melast", "lelast", "kelast", "rts"]},
+        "license": "Firm-level derivative of WRDS Orbis data: never commit or publish.",
+    }
+    (out / "manifest.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False, width=100))
+    print(f"\nfinal estimates written to {out}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--config", type=Path, default=CODE / "config_gnr_orbis_es.yaml")
@@ -40,7 +112,7 @@ def main():
     inter = resolve(config["output"]["intermediary_dir"])
     lo, hi = config["combine"]["window"]
 
-    frames, rows, missing, alt = [], [], [], []
+    frames, rows, missing, alt, fps = [], [], [], [], {}
     for cell in config["cells"]["list"]:
         d = inter / "cells" / str(cell)
         if not ((d / "firm_year_rts.parquet").exists() and (d / "cell_summary.json").exists()):
@@ -49,6 +121,7 @@ def main():
         fy = pd.read_parquet(d / "firm_year_rts.parquet")
         frames.append(fy)
         sm = json.loads((d / "cell_summary.json").read_text())
+        fps[cell] = sm["fingerprint"]
         w = fy[fy["in_step2_sample"] & fy["year"].between(lo, hi)]
         row = {"sector": SECTOR_LABEL.get(cell, str(cell)), "step2_rows": len(w),
                "firms": w["bvdid"].nunique(), "runtime_min": sm["runtime_s"]["total"] / 60,
@@ -135,6 +208,18 @@ def main():
         lines += ["| " + " | ".join(fmt(r[c]) for c in acols) + " |" for r in alt]
     (inter / "gnr_cells_report.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
+
+    drv = load_driver()
+    blocks = ["mapping", "panel", "trimming", "step1", "step2"]
+    stale = []
+    for c, fp in fps.items():
+        df, _ = drv.load_cell(config, c, drv.logging.getLogger("combine"))
+        if fp != drv.fingerprint(config, c, drv.data_hash(df), blocks):
+            stale.append(c)
+    if missing or stale:
+        print(f"\noutdata not written: missing cells {missing}, cells run with other settings {stale}")
+    else:
+        write_outdata(config, args.config, inter, panel, rows, fps)
 
 
 if __name__ == "__main__":

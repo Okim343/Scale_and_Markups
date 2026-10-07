@@ -296,8 +296,99 @@ def _step2_solve(x0: np.ndarray) -> tuple[float, np.ndarray]:
     return float(res.fun), res.x
 
 
+# -----------------------------------------------------------------------------
+# MATLAB-faithful Step 2 local solve (search: matlab)
+# -----------------------------------------------------------------------------
+# est_gnr.m solves each Step 2 start with fminunc and default options except
+# SpecifyObjectiveGradient=false. R2026a defaults for the quasi-newton algorithm:
+# forward finite differences with step sqrt(eps)*max(|x|, 1), relative
+# first-order optimality 1e-6, relative step tolerance 1e-6, 400 iterations and
+# 100 * n_vars function evaluations (gradient evaluations included). The BFGS
+# update matches; the line search is scipy's (MATLAB's differs), so this is an
+# approximation of fminunc, not a replica.
+FMINUNC_OPT_TOL = 1e-6
+FMINUNC_STEP_TOL = 1e-6
+FMINUNC_MAX_ITER = 400
+FMINUNC_FEV_PER_VAR = 100
+
+
+class _FevCapReached(Exception):
+    """Raised inside the objective once the function-evaluation budget is spent."""
+
+
+def fminunc_like(fun, x0: np.ndarray) -> tuple[float, np.ndarray, bool]:
+    """Minimize `fun` like MATLAB fminunc (quasi-newton, no user gradient).
+
+    Returns (fval, x, converged). `converged` mirrors a positive fminunc exit flag:
+    a tolerance was met, or the line search could not decrease the objective further
+    (flag 5), before the iteration / evaluation caps (flag 0).
+    On hitting a cap the last accepted iterate is returned, as fminunc does.
+    """
+    x0 = np.asarray(x0, dtype=float)
+    max_fev = FMINUNC_FEV_PER_VAR * x0.size
+    sqrt_eps = np.sqrt(np.finfo(float).eps)
+    state = {"nfev": 0, "x": x0.copy(), "f": np.inf}
+
+    def f_counted(x):
+        if state["nfev"] >= max_fev:
+            raise _FevCapReached
+        state["nfev"] += 1
+        return fun(x)
+
+    def f_and_grad(x):
+        if state.get("x0_eval") is not None and np.array_equal(x, x0):
+            return state["x0_eval"]  # BFGS re-evaluates the start; do not spend budget twice
+        f0 = f_counted(x)
+        sign = np.where(x >= 0, 1.0, -1.0)
+        h = sqrt_eps * np.maximum(np.abs(x), 1.0) * sign
+        g = np.empty_like(x)
+        for i in range(x.size):
+            xi = x.copy()
+            xi[i] += h[i]
+            g[i] = (f_counted(xi) - f0) / (xi[i] - x[i])
+        return f0, g
+
+    try:
+        f_start, g_start = f_and_grad(x0)
+    except _FevCapReached:
+        return float(state["f"]), state["x"], False
+    state["f"] = f_start
+    state["x0_eval"] = (f_start, g_start)
+    if not np.isfinite(f_start):
+        return float(f_start), x0, False
+    gtol = FMINUNC_OPT_TOL * max(1.0, float(np.max(np.abs(g_start))))
+
+    def callback(intermediate_result):
+        state["x"] = np.array(intermediate_result.x, dtype=float)
+        state["f"] = float(intermediate_result.fun)
+
+    try:
+        res = minimize(
+            f_and_grad, x0, jac=True, method="BFGS", callback=callback,
+            options={"maxiter": FMINUNC_MAX_ITER, "gtol": gtol,
+                     "xrtol": FMINUNC_STEP_TOL, "norm": np.inf},
+        )
+    except _FevCapReached:
+        return float(state["f"]), state["x"], False
+    # Positive fminunc exit flags: 1 (gradient small), 2 (step small), 5 (cannot decrease
+    # along the search direction). scipy status 0 = tolerance met, 2 = line search could
+    # not make progress (fminunc's flag 5); status 1 = iteration cap (flag 0).
+    return float(res.fun), np.asarray(res.x), res.status in (0, 2)
+
+
+def _step2_solve_matlab(x0: np.ndarray) -> tuple[float, np.ndarray, bool]:
+    """One Step 2 nested local solve, fminunc-like (search: matlab).
+    Payload: (rt, lrt, p2, lp2, iv, indmat, h2size, w)."""
+    rt, lrt, p2, lp2, iv, indmat, h2size, w = _WORKER["payload"]
+
+    def obj(a):
+        return step2_objective_nested(a, rt, lrt, p2, lp2, iv, indmat, h2size, w)
+
+    return fminunc_like(obj, x0)
+
+
 def parallel_multistart(solver, starts: np.ndarray, payload: tuple, n_workers: int):
-    """Run `solver` (one of _step1_solve / _step2_solve) from every starting
+    """Run `solver` (_step1_solve / _step2_solve / _step2_solve_matlab) from every starting
     point, on `n_workers` processes (serial when n_workers <= 1). Returns the
     list of per-start results in start order.
 

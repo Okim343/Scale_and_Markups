@@ -1,44 +1,49 @@
 # =============================================================================
-# GNR config for the Orbis Spain panel (01_Cleaning/01_code/02_clean_orbis_es.py).
-# Same estimator settings as the Compustat config
-# (01_Compustat/00_Hubmer_RTS/01_code/config.yaml); only the input, mapping,
-# panel guardrails, outputs and publishing differ. The estimator itself is the
-# shared 03_Empirical/00_GNR_core.
-# Outputs are firm-level WRDS derivatives, so they stay under the gitignored
-# 01_intermediary/, and nothing is published to the Compustat alpha pipeline.
+# Per-cell GNR for the Orbis Spain panel (01_Cleaning/01_code/02_clean_orbis_es.py).
+# One production function per NAICS2 cell (`ind2d`), as Hubmer et al. (2025).
+# Estimator: the shared 03_Empirical/00_GNR_core. Trimming, step 1 and step 2
+# settings are identical to the Compustat config
+# (01_Compustat/00_Hubmer_RTS/01_code/config.yaml), but every trim (share band,
+# percentile cut, minimum year size) is applied within the cell.
+#
+#   python 01_run_gnr_cell.py --cell 21          # one cell
+#   python 02_combine_cells.py                   # stack finished cells
+#
+# Outputs are firm-level WRDS derivatives: they stay under the gitignored
+# 01_intermediary/ and are never published to the Compustat alpha pipeline.
+# All relative paths resolve against the project root.
 # =============================================================================
 
-pipeline_version: "0.1.0-orbis-es"
+pipeline_version: "0.2.0-orbis-es-cells"
 
 # --- Input -------------------------------------------------------------------
 input:
-  # Orbis Spain GNR input from 02_clean_orbis_es.py (baseline tfas capital).
-  # Use the broad firm-year universe. The QJE cost-share trim used for
-  # aggregate markup construction is intentionally not imposed before GNR.
-  source: "03_Empirical/02_Orbis/01_Cleaning/01_intermediary/gnr_ready_tfas.dta"   # fias: gnr_ready_fias.dta
+  # Baseline tfas capital; gnr_ready_fias.parquet for the Hubmer et al. capital.
+  source: "03_Empirical/02_Orbis/01_Cleaning/01_intermediary/gnr_ready_tfas.parquet"
 
-# --- Variable mapping (chosen v1 mapping, fixed by the plan) ------------------
+# --- Variable mapping (columns of the input -> GNR levels) --------------------
 mapping:
-  id: bvdid            # firm identifier (renamed to gvkey inside R1)
-  year: year           # fiscal-year panel variable in the curated file
+  id: bvdid            # firm identifier
+  year: year
   ind: ind2d           # NAICS2 cell, 31-33 / 44-45 / 48-49 grouped (coded 31 / 44 / 48)
   revenue: rev_D       # turn, else opre; HICP-deflated, 2019 EUR
   capital: cap_D       # tfas (fias in gnr_ready_fias); HICP-deflated
   materials: mate_D    # material costs; same deflator as revenue, so s is nominal
   labor: staf_D        # wage bill, as Hubmer et al. App. C.3
-  wage_bill: wagebill_D # copy of staf_D (R1 needs a distinct column); w = 0, unused
+  wage_bill: wagebill_D # copy of staf_D; w = log(staf/staf) = 0, unused (require_wages: false)
 
 # --- Panel construction -------------------------------------------------------
 panel:
   start_year: 2014           # 2014 is lag-only: it has no 2013 lag, so it never enters estimation
+  end_year: 2023             # 2024 is robustness only (selectively incomplete)
   require_wages: false       # baseline GNR does NOT require wages for identification
   build_materials_alt1: false # cogs - xlr robustness is Compustat-specific (mate excludes staf)
-  min_raw_rows: 3000000      # guardrail: catch accidental aggregation-trimmed inputs
-  min_post_start_rows: 3000000
-  min_final_rows: 2000000
-  # Optional subsampling for smoke tests (null = full sample).
-  sample_firms_frac: null
-  sample_seed: 12345
+  min_final_rows: 2000       # per-cell guardrail after trimming (smallest cell, 21, has ~7.5k)
+
+# --- Cells ------------------------------------------------------------------------
+cells:
+  # Retained ind2d cells of the cleaned panel (exclusions applied in cleaning).
+  list: [11, 21, 22, 23, 31, 42, 44, 48, 51, 54, 56, 61, 71, 72]
 
 # --- Trimming (mirrors est_gnr.m) ---------------------------------------------
 trimming:
@@ -54,6 +59,10 @@ trimming:
 
 # --- Step 1: NLS share regression (materials elasticity) -----------------------
 step1:
+  # Search: "matlab" replicates est_gnr.m (its start set, fminunc-like local solves,
+  # fminsearch-like polish); "extended" is the Compustat pipeline's wider multistart.
+  # See 03_Empirical/00_GNR_core/gnr_estimate.py.
+  search: matlab
   seed: 2020
   n_workers: 10        # parallel multistart processes (1 = serial)
   n_sobol: 6000        # Sobol pool size (MATLAB: gensobol(6000, ...))
@@ -71,6 +80,7 @@ step1:
 
 # --- Step 2: nested GMM (integration constant + productivity Markov process) ---
 step2:
+  search: matlab          # see step1.search; economic/wide starts below are unused under matlab
   seed: 1982
   n_workers: 10
   n_sobol: 500
@@ -91,29 +101,13 @@ postprocess:
   # Diagnostics-only band: RTS outside this range is flagged (not dropped).
   rts_flag_range: [0.0, 3.0]
 
-# --- Export for the alpha pipeline ----------------------------------------------
-export:
-  # Window used for the sector-level naics_rts aggregation (continuity /
-  # diagnostics object). null = full estimation sample.
-  window: [2015, 2023]
-  # Copy firm_year_rts.parquet into
-  # 01_Compustat/01_industry_alpha/00_indata/04_salgado_data/firm_year_rts.parquet.
-  # This is the intended integration point; 05_build_F_alpha.py auto-detects it.
-  publish_firm_year_to_alpha_pipeline: false   # never publish Orbis output over Compustat
-  # SAFETY: by default we never overwrite the original Salgado naics_rts.csv.
-  # The GNR sector aggregation is written as naics_rts_gnr.csv instead.
-  # Setting this to true backs up the original (timestamped) and overwrites it.
-  overwrite_legacy_naics_rts: false
-
-# --- Alpha-omega correlation (stage 05; produces the moment only) -------------
-alpha_omega_corr:
-  min_firms_per_sector: 30
-  winsor_pct: [0.01, 0.99]
+# --- Combine ------------------------------------------------------------------------
+combine:
+  window: [2015, 2023]       # window for the per-cell summary table
 
 # --- Output locations ------------------------------------------------------------
 output:
-  intermediary_dir: "03_Empirical/02_Orbis/02_GNR/01_intermediary"
-  outdata_dir: "03_Empirical/02_Orbis/02_GNR/01_intermediary/out"
+  intermediary_dir: "03_Empirical/02_Orbis/02_GNR/01_intermediary"   # cells/<ind2d>/, combined files
 
 # --- Logging ----------------------------------------------------------------------
 log_level: INFO

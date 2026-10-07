@@ -22,6 +22,28 @@ The refactor moved code without changing logic. The Compustat smoke run (`config
 R1-R3) gives identical panels and `firm_year_rts.parquet` (equal DataFrames) and identical
 step 1 / step 2 result JSONs before and after the move.
 
+## Search modes (`search` in the `step1` / `step2` config blocks)
+
+- `extended` (default; used by Compustat, whose configs do not set the key): the original
+  Python multistart. Step 1 adds 20 jittered OLS starts; Step 2 adds 2 economic starts and 50
+  wide Sobol starts in [-3, 3], solves each with scipy BFGS, and keeps the polish only if it
+  improves the objective. Output is identical to before the switch existed (Compustat smoke
+  run: equal step 1 / step 2 JSONs and `firm_year_rts`).
+- `matlab` (Orbis config): `est_gnr.m`'s search. Its start sets only; Step 2 local solves are
+  `gnr_model.fminunc_like` (R2026a `fminunc` quasi-newton defaults: forward differences with
+  step sqrt(eps)*max(|x|,1), relative optimality / step tolerance 1e-6, 400 iterations, 100
+  evaluations per variable); the best solution is taken among converged runs (MultiStart's
+  positive exit flags, including flag 5, "cannot decrease along the search direction"); then
+  an `fminsearch`-like polish (TolX = TolFun = 1e-4) whose result is kept. The line search is
+  scipy's, so this approximates `fminunc` rather than replicating it. On Orbis cell 51 it
+  reproduces the MATLAB code's seed-invariant answer (RTS 0.94 vs 0.96; the gap is a trimming
+  difference, below).
+
+Known remaining divergence from `est_gnr.m`: `gnr_panel.trim_panel` applies the 1% percentile
+trim after the materials-share band and counts industry / year sizes after trimming; the
+MATLAB code computes percentiles and counts on the untrimmed sample. On Orbis cell 51 this
+keeps 35,474 vs 36,119 rows.
+
 ## Using it
 
 Put this directory on `sys.path`; it is not a package because its name starts with a digit.

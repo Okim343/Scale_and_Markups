@@ -5,6 +5,17 @@ Moved out of 01_Compustat/00_Hubmer_RTS/01_code/02_estimate_gnr.py (stage R2), l
 unchanged; see that file's docstring for the estimator description. Inputs are the
 trimmed panel from gnr_panel.trim_panel and the `step1` / `step2` config blocks.
 
+Search mode (`search` key in the step1 / step2 config blocks):
+  extended (default): the Compustat pipeline's multistart. Step 1 adds 20 jittered copies
+      of the OLS guess; Step 2 adds 2 economic starts and 50 wide Sobol starts in [-3, 3]
+      and solves each start with scipy BFGS (maxiter from config). Polish results are kept
+      only if they improve the objective.
+  matlab: est_gnr.m's search. Step 1 starts = {OLS guess, gamma0, 2*gamma0, first n_starts
+      Sobol points}. Step 2 starts = {OLS guess, alpha0, first n_starts Sobol points in
+      sobol_bounds}, each solved fminunc-like (gnr_model.fminunc_like), best taken among
+      converged local solutions (MultiStart rule), then an fminsearch-like Nelder-Mead
+      polish (TolX = TolFun = 1e-4, MATLAB defaults) whose result is accepted.
+
 Step 2's Markov process carries one dummy per industry after the first. With a single
 `ind2d` (within-cell estimation, as Hubmer et al.) there are zero dummy columns and the
 process is a constant plus the polynomial in lagged omega.
@@ -19,6 +30,16 @@ import pandas as pd
 from scipy.optimize import minimize
 
 import gnr_model as gm
+
+SEARCH_MODES = ("extended", "matlab")
+
+
+def search_mode(cfg: dict) -> str:
+    """The `search` key of a step1 / step2 config block (default: extended)."""
+    mode = cfg.get("search", "extended")
+    if mode not in SEARCH_MODES:
+        raise ValueError(f"search must be one of {SEARCH_MODES}, got {mode!r}")
+    return mode
 
 
 # -----------------------------------------------------------------------------
@@ -54,9 +75,13 @@ def build_step1_starts(p1: np.ndarray, s: np.ndarray, cfg_s1: dict, logger) -> n
         1.0 + jitter_scale * rng.standard_normal((n_jitter, len(gamma_ols)))
     )
 
-    candidates = np.vstack(
-        [gamma_ols, gamma0, 2.0 * gamma0, jittered, sobol[:n_starts]]
-    )
+    if search_mode(cfg_s1) == "matlab":
+        # est_gnr.m: paramset = [gamma_ols; gamma0; gamma0.*2; sobolvec1(1:100,:)]
+        candidates = np.vstack([gamma_ols, gamma0, 2.0 * gamma0, sobol[:n_starts]])
+    else:
+        candidates = np.vstack(
+            [gamma_ols, gamma0, 2.0 * gamma0, jittered, sobol[:n_starts]]
+        )
 
     starts = gm.nls_const_filter(candidates, p1)
     logger.info(
@@ -102,6 +127,7 @@ def run_step1(est: pd.DataFrame, cfg_s1: dict, logger) -> dict:
     def obj_only(x):
         return gm.step1_objective(x, s, p1)[0]
 
+    matlab_search = search_mode(cfg_s1) == "matlab"
     polish = minimize(
         obj_only,
         best_x,
@@ -109,8 +135,9 @@ def run_step1(est: pd.DataFrame, cfg_s1: dict, logger) -> dict:
         options={
             "maxfev": int(cfg_s1["maxfev_polish"]),
             "maxiter": int(cfg_s1["maxfev_polish"]),
-            "xatol": 1e-8,
-            "fatol": 1e-10,
+            # fminsearch defaults TolX = TolFun = 1e-4 under search: matlab
+            "xatol": 1e-4 if matlab_search else 1e-8,
+            "fatol": 1e-4 if matlab_search else 1e-10,
         },
     )
     if polish.fun <= best_fval and (p1 @ polish.x).min() > 0:
@@ -133,7 +160,7 @@ def run_step1(est: pd.DataFrame, cfg_s1: dict, logger) -> dict:
         f"sd = {melast.std():.4f}, share <= 0: {(melast <= 0).mean():.2%}"
     )
 
-    return {
+    out = {
         "gamma_raw": soln.tolist(),
         "gamma_scaled": gamma_scaled.tolist(),
         "bigeps": bigeps,
@@ -148,6 +175,9 @@ def run_step1(est: pd.DataFrame, cfg_s1: dict, logger) -> dict:
         "melast_sd": float(melast.std()),
         "seed": int(cfg_s1["seed"]),
     }
+    if matlab_search:  # extended output keeps its original keys
+        out["search"] = "matlab"
+    return out
 
 
 # -----------------------------------------------------------------------------
@@ -213,6 +243,8 @@ def step2_arrays(sub: pd.DataFrame, s1: dict, logger):
 
 
 def run_step2(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
+    if search_mode(cfg_s2) == "matlab":
+        return run_step2_matlab(sub, s1, cfg_s2, logger)
     rt, lrt, p2, lp2, iv, dummies, ind_categories = step2_arrays(sub, s1, logger)
     h2size = int(cfg_s2["h2size"])
     w_mat = np.eye(iv.shape[1])
@@ -331,4 +363,106 @@ def run_step2(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
         "omega_sd": float(omega.std()),
         "eta_sd": float(eta.std()),
         "seed": int(cfg_s2["seed"]),
+    }
+
+
+def run_step2_matlab(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
+    """Step 2 with est_gnr.m's search (see module docstring, search: matlab)."""
+    rt, lrt, p2, lp2, iv, dummies, ind_categories = step2_arrays(sub, s1, logger)
+    h2size = int(cfg_s2["h2size"])
+    w_mat = np.eye(iv.shape[1])
+
+    def obj(a):
+        return gm.step2_objective_nested(
+            a, rt, lrt, p2, lp2, iv, dummies, h2size, w_mat
+        )
+
+    # est_gnr.m: initvec = [[linguess,...]; [alpha0,...]; sobolvec2(1:100,:)], first 5 columns.
+    x_design = np.column_stack([np.ones(len(rt)), -p2])
+    linguess = np.linalg.lstsq(x_design, rt, rcond=None)[0][1:]
+    alpha0 = np.full(gm.P2SIZE, 1.0e-4)
+    lo, hi = map(float, cfg_s2["sobol_bounds"])
+    sobol = gm.gensobol(int(cfg_s2["n_sobol"]), gm.P2SIZE, lo, hi, seed=int(cfg_s2["seed"]))
+    starts = np.vstack([linguess, alpha0, sobol[: int(cfg_s2["n_starts"])]])
+    n_workers = int(cfg_s2.get("n_workers", 1))
+    logger.info(f"  step 2 multistart (search: matlab): {len(starts)} starting points, fminunc-like")
+
+    t0 = time.time()
+    payload = (rt, lrt, p2, lp2, iv, dummies, h2size, w_mat)
+    raw = gm.parallel_multistart(gm._step2_solve_matlab, starts, payload, n_workers)
+    finite = [(f, x, c) for f, x, c in raw if np.isfinite(f)]
+    converged = [(f, x) for f, x, c in finite if c]
+    logger.info(
+        f"  step 2 multistart: {len(finite)} finite, {len(converged)} converged local solutions "
+        f"in {time.time() - t0:.1f}s [{n_workers} worker(s)]"
+    )
+    if not finite:
+        raise RuntimeError("step 2: no finite local solution found")
+    # MultiStart returns the best local solution with a positive exit flag; if none
+    # converged, fall back to the best finite one.
+    pool = converged if converged else [(f, x) for f, x, _ in finite]
+    best_fval, best_x = min(pool, key=lambda r: r[0])
+    fvals = np.asarray([r[0] for r in finite], dtype=float)
+    fval_q = np.quantile(fvals, [0.0, 0.1, 0.5, 0.9, 1.0])
+    near_best = int((fvals <= best_fval + max(1e-8, abs(best_fval) * 1e-4)).sum())
+    logger.info(
+        "  step 2 local objective distribution "
+        f"min/p10/p50/p90/max = {np.round(fval_q, 6).tolist()}"
+    )
+    logger.info(f"  best {'converged' if converged else 'finite'} multistart fval: {best_fval:.6g}")
+
+    # fminsearch(step2_func_nest, ms2_soln, fminsearch_opts): MaxFunEvals 10000,
+    # MaxIter 5000, default TolX = TolFun = 1e-4; its result is used as is.
+    polish = minimize(
+        obj, best_x, method="Nelder-Mead",
+        options={
+            "maxfev": int(cfg_s2["maxfev_polish"]),
+            "maxiter": int(cfg_s2.get("maxiter_polish", cfg_s2["maxfev_polish"])),
+            "xatol": 1e-4,
+            "fatol": 1e-4,
+        },
+    )
+    if not np.isfinite(polish.fun):
+        raise RuntimeError("step 2: polish ended at a non-finite objective")
+    a_hat, fval = polish.x, float(polish.fun)
+    logger.info(f"  polished fval: {fval:.6g}")
+
+    _, delta, eta = gm.step2_objective_nested(
+        a_hat, rt, lrt, p2, lp2, iv, dummies, h2size, w_mat, return_full=True
+    )
+    omega = rt + p2 @ a_hat
+    lomega = lrt + lp2 @ a_hat
+    logger.info(
+        f"  sd(omega) = {omega.std():.4f}, sd(eta) = {eta.std():.4f}, "
+        f"corr(omega, lomega) = {np.corrcoef(omega, lomega)[0, 1]:.4f}"
+    )
+    return {
+        "alpha": a_hat.tolist(),
+        "delta": delta.tolist(),
+        "delta_layout": {
+            "ind_dummy_categories": ind_categories,
+            "first_category_dropped": True,
+            "n_dummy_cols": int(dummies.shape[1]),
+            "markov_terms": [f"lomega^{p}" for p in range(0, h2size)],
+            "order": "[dummies..., const, lomega, lomega^2, ...]",
+        },
+        "h2size": h2size,
+        "fval": fval,
+        "fval_multistart_best": float(best_fval),
+        "local_solution_diagnostics": {
+            "n_finite": int(len(finite)),
+            "n_converged": int(len(converged)),
+            "fval_min": float(fval_q[0]),
+            "fval_p10": float(fval_q[1]),
+            "fval_p50": float(fval_q[2]),
+            "fval_p90": float(fval_q[3]),
+            "fval_max": float(fval_q[4]),
+            "near_best_count": near_best,
+        },
+        "n_starts": int(len(starts)),
+        "n_obs": int(len(sub)),
+        "omega_sd": float(omega.std()),
+        "eta_sd": float(eta.std()),
+        "seed": int(cfg_s2["seed"]),
+        "search": "matlab",
     }

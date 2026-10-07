@@ -10,18 +10,18 @@ Search mode (`search` key in the step1 / step2 config blocks):
       of the OLS guess; Step 2 adds 2 economic starts and 50 wide Sobol starts in [-3, 3]
       and solves each start with scipy BFGS (maxiter from config). Polish results are kept
       only if they improve the objective.
-  matlab: est_gnr.m's search. Step 1 starts = {OLS guess, gamma0, 2*gamma0, first n_starts
-      Sobol points}. Step 2 starts = {OLS guess, alpha0, first n_starts Sobol points in
-      sobol_bounds}, each solved fminunc-like (gnr_model.fminunc_like), best taken among
-      converged local solutions (MultiStart rule), then an fminsearch-like Nelder-Mead
-      polish (TolX = TolFun = 1e-4, MATLAB defaults) whose result is accepted.
-  exact (Step 2 only): same moments and start set as matlab, but k and l (current and
-      lagged) are centered and scaled before building P2 / IV, and each start solves the
-      moment equations g = 0 by Levenberg-Marquardt with the exact Jacobian
-      (gnr_model.step2_moments_jacobian). Standardizing is a linear reparametrization: it
-      leaves the set of exact roots unchanged; the solution is mapped back to the original
-      P2 coefficients. Every endpoint is reported, with how many are exact roots and how
-      many distinct roots there are.
+  matlab (Step 1 only): est_gnr.m's start set, {OLS guess, gamma0, 2*gamma0, first n_starts
+      Sobol points}, and an fminsearch-like Nelder-Mead polish (TolX = TolFun = 1e-4,
+      MATLAB defaults) whose result is accepted.
+  exact (Step 2 only): est_gnr.m's moments and start set {OLS guess, alpha0, first n_starts
+      Sobol points in sobol_bounds}, with k and l (current and lagged) centered and scaled
+      before building P2 / IV; each start solves the moment equations g = 0 by
+      Levenberg-Marquardt with the exact Jacobian (gnr_model.step2_moments_jacobian).
+      Standardizing is a linear reparametrization: it leaves the set of exact roots
+      unchanged; the solution is mapped back to the original P2 coefficients. Every endpoint
+      is reported, with how many are exact roots and how many distinct roots there are; one
+      root is picked by the rule in step2.root_selection (see README.md). est_gnr.m's own
+      fminunc search stalls at non-stationary points on Orbis cells, so it is not offered.
 
 Step 2's Markov process carries one dummy per industry after the first. With a single
 `ind2d` (within-cell estimation, as Hubmer et al.) there are zero dummy columns and the
@@ -38,14 +38,15 @@ from scipy.optimize import minimize
 
 import gnr_model as gm
 
-SEARCH_MODES = ("extended", "matlab", "exact")
+STEP1_SEARCH_MODES = ("extended", "matlab")
+STEP2_SEARCH_MODES = ("extended", "exact")
 
 
-def search_mode(cfg: dict) -> str:
+def search_mode(cfg: dict, modes: tuple = STEP1_SEARCH_MODES) -> str:
     """The `search` key of a step1 / step2 config block (default: extended)."""
     mode = cfg.get("search", "extended")
-    if mode not in SEARCH_MODES:
-        raise ValueError(f"search must be one of {SEARCH_MODES}, got {mode!r}")
+    if mode not in modes:
+        raise ValueError(f"search must be one of {modes}, got {mode!r}")
     return mode
 
 
@@ -250,9 +251,7 @@ def step2_arrays(sub: pd.DataFrame, s1: dict, logger):
 
 
 def run_step2(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
-    if search_mode(cfg_s2) == "matlab":
-        return run_step2_matlab(sub, s1, cfg_s2, logger)
-    if search_mode(cfg_s2) == "exact":
+    if search_mode(cfg_s2, STEP2_SEARCH_MODES) == "exact":
         return run_step2_exact(sub, s1, cfg_s2, logger)
     rt, lrt, p2, lp2, iv, dummies, ind_categories = step2_arrays(sub, s1, logger)
     h2size = int(cfg_s2["h2size"])
@@ -375,108 +374,6 @@ def run_step2(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
     }
 
 
-def run_step2_matlab(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
-    """Step 2 with est_gnr.m's search (see module docstring, search: matlab)."""
-    rt, lrt, p2, lp2, iv, dummies, ind_categories = step2_arrays(sub, s1, logger)
-    h2size = int(cfg_s2["h2size"])
-    w_mat = np.eye(iv.shape[1])
-
-    def obj(a):
-        return gm.step2_objective_nested(
-            a, rt, lrt, p2, lp2, iv, dummies, h2size, w_mat
-        )
-
-    # est_gnr.m: initvec = [[linguess,...]; [alpha0,...]; sobolvec2(1:100,:)], first 5 columns.
-    x_design = np.column_stack([np.ones(len(rt)), -p2])
-    linguess = np.linalg.lstsq(x_design, rt, rcond=None)[0][1:]
-    alpha0 = np.full(gm.P2SIZE, 1.0e-4)
-    lo, hi = map(float, cfg_s2["sobol_bounds"])
-    sobol = gm.gensobol(int(cfg_s2["n_sobol"]), gm.P2SIZE, lo, hi, seed=int(cfg_s2["seed"]))
-    starts = np.vstack([linguess, alpha0, sobol[: int(cfg_s2["n_starts"])]])
-    n_workers = int(cfg_s2.get("n_workers", 1))
-    logger.info(f"  step 2 multistart (search: matlab): {len(starts)} starting points, fminunc-like")
-
-    t0 = time.time()
-    payload = (rt, lrt, p2, lp2, iv, dummies, h2size, w_mat)
-    raw = gm.parallel_multistart(gm._step2_solve_matlab, starts, payload, n_workers)
-    finite = [(f, x, c) for f, x, c in raw if np.isfinite(f)]
-    converged = [(f, x) for f, x, c in finite if c]
-    logger.info(
-        f"  step 2 multistart: {len(finite)} finite, {len(converged)} converged local solutions "
-        f"in {time.time() - t0:.1f}s [{n_workers} worker(s)]"
-    )
-    if not finite:
-        raise RuntimeError("step 2: no finite local solution found")
-    # MultiStart returns the best local solution with a positive exit flag; if none
-    # converged, fall back to the best finite one.
-    pool = converged if converged else [(f, x) for f, x, _ in finite]
-    best_fval, best_x = min(pool, key=lambda r: r[0])
-    fvals = np.asarray([r[0] for r in finite], dtype=float)
-    fval_q = np.quantile(fvals, [0.0, 0.1, 0.5, 0.9, 1.0])
-    near_best = int((fvals <= best_fval + max(1e-8, abs(best_fval) * 1e-4)).sum())
-    logger.info(
-        "  step 2 local objective distribution "
-        f"min/p10/p50/p90/max = {np.round(fval_q, 6).tolist()}"
-    )
-    logger.info(f"  best {'converged' if converged else 'finite'} multistart fval: {best_fval:.6g}")
-
-    # fminsearch(step2_func_nest, ms2_soln, fminsearch_opts): MaxFunEvals 10000,
-    # MaxIter 5000, default TolX = TolFun = 1e-4; its result is used as is.
-    polish = minimize(
-        obj, best_x, method="Nelder-Mead",
-        options={
-            "maxfev": int(cfg_s2["maxfev_polish"]),
-            "maxiter": int(cfg_s2.get("maxiter_polish", cfg_s2["maxfev_polish"])),
-            "xatol": 1e-4,
-            "fatol": 1e-4,
-        },
-    )
-    if not np.isfinite(polish.fun):
-        raise RuntimeError("step 2: polish ended at a non-finite objective")
-    a_hat, fval = polish.x, float(polish.fun)
-    logger.info(f"  polished fval: {fval:.6g}")
-
-    _, delta, eta = gm.step2_objective_nested(
-        a_hat, rt, lrt, p2, lp2, iv, dummies, h2size, w_mat, return_full=True
-    )
-    omega = rt + p2 @ a_hat
-    lomega = lrt + lp2 @ a_hat
-    logger.info(
-        f"  sd(omega) = {omega.std():.4f}, sd(eta) = {eta.std():.4f}, "
-        f"corr(omega, lomega) = {np.corrcoef(omega, lomega)[0, 1]:.4f}"
-    )
-    return {
-        "alpha": a_hat.tolist(),
-        "delta": delta.tolist(),
-        "delta_layout": {
-            "ind_dummy_categories": ind_categories,
-            "first_category_dropped": True,
-            "n_dummy_cols": int(dummies.shape[1]),
-            "markov_terms": [f"lomega^{p}" for p in range(0, h2size)],
-            "order": "[dummies..., const, lomega, lomega^2, ...]",
-        },
-        "h2size": h2size,
-        "fval": fval,
-        "fval_multistart_best": float(best_fval),
-        "local_solution_diagnostics": {
-            "n_finite": int(len(finite)),
-            "n_converged": int(len(converged)),
-            "fval_min": float(fval_q[0]),
-            "fval_p10": float(fval_q[1]),
-            "fval_p50": float(fval_q[2]),
-            "fval_p90": float(fval_q[3]),
-            "fval_max": float(fval_q[4]),
-            "near_best_count": near_best,
-        },
-        "n_starts": int(len(starts)),
-        "n_obs": int(len(sub)),
-        "omega_sd": float(omega.std()),
-        "eta_sd": float(eta.std()),
-        "seed": int(cfg_s2["seed"]),
-        "search": "matlab",
-    }
-
-
 ROOT_J_TOL = 1e-6        # efficient J below this counts as an exact root
 ROOT_CLUSTER_TOL = 1e-5  # relative distance in original coefficients for "same root"
 ROOT_SELECTION_RULES = ("most_starts", "most_starts_grouped")
@@ -570,7 +467,7 @@ def run_step2_exact(sub: pd.DataFrame, s1: dict, cfg_s2: dict, logger) -> dict:
     n = len(rt)
     p2s, lp2s, ivs, b_of_a, a_of_b = _standardized_step2(sub)
 
-    # Same start set as search: matlab, expressed in standardized coefficients.
+    # est_gnr.m's Step 2 start set (linguess, alpha0, Sobol), in standardized coefficients.
     x_design = np.column_stack([np.ones(n), -p2])
     linguess = np.linalg.lstsq(x_design, rt, rcond=None)[0][1:]
     lo, hi = map(float, cfg_s2["sobol_bounds"])

@@ -116,9 +116,9 @@ An in-memory dry run of R1's `build_panel` + `trim_panel` (nothing written, no e
   because Compustat cells are thin. For Orbis we follow Hubmer et al. and estimate **within** each
   NAICS2 cell (`ind2d`, 31-33 / 44-45 / 48-49 grouped). The estimator now lives in the shared
   `03_Empirical/00_GNR_core/`; with a single `ind2d` the step-2 Markov process has no industry dummies.
-  The per-cell driver goes in `03_Empirical/02_Orbis/02_GNR/`.
-- **Runtime.** The R1 estimation sample is 2.68M rows, about 21× Compustat's 128k. Expect the multistart
-  steps 1 and 2 to take tens of hours locally; Marvin2, fewer starts, or per-cell runs would help.
+  The per-cell driver is in `03_Empirical/02_Orbis/02_GNR/` (see the last section).
+- **Runtime: resolved.** Per-cell estimation on the lab workstation takes about 30 minutes for all 14 cells
+  at 64 CPUs (about 2 hours with seed checks).
 - **Services lose many firms to the share band.** `mate > 0` is the binding positivity filter (1.72M rows),
   and among survivors 11.9% have `mate/rev` outside [0.05, 0.95]. Medians are 0.09 in 61, 0.16-0.18 in
   54/56/71, so R1 drops about half of 54 (387k → 195k) and 61 (69k → 32k). The materials-based markup
@@ -150,4 +150,18 @@ An in-memory dry run of R1's `build_panel` + `trim_panel` (nothing written, no e
   The choice is the same with tolerances at 0.5x to 3x. It changes only cell 44-45, whose two
   near-duplicate roots (RTS 0.983 and 0.980) were split by the coefficient tolerance and together
   reach more starts than the RTS 0.904 root.
+
+## GNR run and final outputs
+
+Code in `03_Empirical/02_Orbis/02_GNR/01_code/` (config `config_gnr_orbis_es.yaml`): `01_run_gnr_cell.py`
+estimates one cell, `03_seed_check_cell.py` reruns step 2 under 4 Sobol seeds, `02_combine_cells.py` stacks
+the cells, and `run_all_cells.slurm` runs everything on the lab workstation (about 2 hours at 64 CPUs with
+seed checks). Per-cell files go to `02_GNR/01_intermediary/cells/<ind2d>/`. When all 14 cells ran with the
+current config, combine writes the final estimates to `02_GNR/03_outdata/` (gitignored, WRDS derivative):
+`firm_year_rts.parquet` (one row per trimmed firm-year: `bvdid, year, ind2d`, the logs `s r k m l`, `eps,
+melast` and, on the step-2 sample, `kelast, lelast, omega, lomega, eta, rts = alpha_gross_output`),
+`gnr_cells_report.md` (per-cell table, pooled comparison with Hubmer et al. Table A.5, alternative root
+groups), `cell_diagnostics.csv` and `manifest.yaml` (commit, config hash, cell fingerprints, row counts).
+Fingerprints hash the content of each cell's input rows and the settings, not file paths, so results computed
+on the workstation are recognised locally.
 

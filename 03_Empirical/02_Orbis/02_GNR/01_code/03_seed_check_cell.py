@@ -1,13 +1,13 @@
 """Check whether a cell's GNR Step 2 solution depends on the multistart draw.
 
-Step 2 is just-identified (5 moments, 5 parameters), so the GMM estimate sets every moment
-to zero and the objective N g'g/2 to 0. With identity weighting the objective can be very
-flat, and a multistart can stop at a point that is not a solution. For each seed this
-reruns Step 2 (same Step 1, same sample, only the Sobol starting points change) and reports:
-  fval            N g'Wg/2 at the polished solution (0 at the GMM estimate)
-  J               N g' S^-1 g with S = cov(eta * IV): the efficiently weighted test of
-                  the moments at that point; chi2(5) 5% critical value 11.07
-  elasticities    mean kelast / lelast / rts and RTS P10 / P90 on the Step-2 sample
+Step 2 is just identified (5 moments, 5 parameters) and solved for exact roots of the moment
+equations (step2.search: exact), with one root picked by step2.root_selection. For each seed
+this reruns Step 2 (same Step 1, same sample, only the Sobol starting points change) and
+reports:
+  fval, J         N g'g/2 and the efficiently weighted N g' S^-1 g (S = cov(eta * IV)) at the
+                  chosen root; both ~0 at an exact root
+  roots           exact root solves, distinct roots, root groups, the chosen group's starts
+  elasticities    mean melast / kelast / lelast / rts and RTS P10 / P90 on the Step-2 sample
 
 Needs 01_run_gnr_cell.py to have run for the cell (reuses its step1_results.json).
 Writes <output.intermediary_dir>/cells/<ind2d>/seed_check.json.

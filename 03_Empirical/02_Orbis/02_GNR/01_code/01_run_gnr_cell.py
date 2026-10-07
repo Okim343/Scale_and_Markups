@@ -12,7 +12,9 @@ Writes to <output.intermediary_dir>/cells/<ind2d>/ (gitignored):
     run.log
 
 Restartable: a finished cell is skipped, and a saved step is reused, when its fingerprint
-(cell, input file, mapping/panel/trimming/step settings) is unchanged. --force reruns.
+(cell, content of the cell's input rows, mapping/panel/trimming/step settings) is unchanged.
+The fingerprint does not depend on file paths or timestamps, so results move between machines.
+--force reruns.
 
     python 01_run_gnr_cell.py --cell 21 [--config config_gnr_orbis_es.yaml] [--workers 8] [--force]
 """
@@ -65,13 +67,18 @@ def setup_logger(cell, log_path, level):
     return logger
 
 
-def fingerprint(config, cell, src, blocks):
+def data_hash(df):
+    """Content hash of a cell's input rows (row order and float width do not matter)."""
+    d = df.sort_values([CORE_ID, "year"]).reset_index(drop=True)
+    d = d.astype({c: "float64" for c in LEVELS.values()})
+    return hashlib.sha256(pd.util.hash_pandas_object(d, index=False).values.tobytes()).hexdigest()[:16]
+
+
+def fingerprint(config, cell, dhash, blocks):
     """Hash of everything a step depends on (worker count excluded: it does not change results)."""
     def strip(b):
         return {k: v for k, v in b.items() if k != "n_workers"} if isinstance(b, dict) else b
-    st = src.stat()
-    payload = {"cell": cell, "src": str(src), "size": st.st_size, "mtime": int(st.st_mtime),
-               **{b: strip(config[b]) for b in blocks}}
+    payload = {"cell": cell, "data": dhash, **{b: strip(config[b]) for b in blocks}}
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -128,17 +135,16 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     logger = setup_logger(cell, out / "run.log", config.get("log_level", "INFO"))
 
-    src = resolve(config["input"]["source"])
+    t_start = time.time()
+    df, _ = load_cell(config, cell, logger)
+    dhash = data_hash(df)
     base = ["mapping", "panel", "trimming"]
-    fp1 = fingerprint(config, cell, src, base + ["step1"])
-    fp2 = fingerprint(config, cell, src, base + ["step1", "step2"])
+    fp1 = fingerprint(config, cell, dhash, base + ["step1"])
+    fp2 = fingerprint(config, cell, dhash, base + ["step1", "step2"])
     summary_path = out / "cell_summary.json"
     if not args.force and (out / "firm_year_rts.parquet").exists() and load_json(summary_path, fp2):
         logger.info(f"cell {cell}: finished with the same inputs and settings; skipping (--force reruns)")
         return
-
-    t_start = time.time()
-    df, _ = load_cell(config, cell, logger)
     n_cell = len(df)
     df = construct_gnr_vars(df, logger, build_materials_alt1=bool(config["panel"]["build_materials_alt1"]),
                             id_col=CORE_ID)
@@ -184,7 +190,7 @@ def main():
 
     s2s = fy[fy["in_step2_sample"]]
     summary = {
-        "cell": cell, "fingerprint": fp2, "pipeline_version": config.get("pipeline_version"),
+        "cell": cell, "fingerprint": fp2, "data_hash": dhash, "pipeline_version": config.get("pipeline_version"),
         "counts": {"cell_rows": n_cell, "with_consecutive_lag": n_lag, "trimmed": int(len(est)),
                    "step2": int(len(s2s)), "firms_step2": int(s2s["bvdid"].nunique()),
                    "years_kept": years_kept},

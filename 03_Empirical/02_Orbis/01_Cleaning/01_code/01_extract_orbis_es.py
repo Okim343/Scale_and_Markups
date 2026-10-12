@@ -1,4 +1,5 @@
-"""Extract Spanish Orbis financials and industry codes from WRDS (spec: ORBIS_SPAIN_EXTRACTION.md).
+"""Extract Spanish Orbis financials and industry codes from WRDS
+(spec: 02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_EXTRACTION.md).
 
 Pulls exactly the GNR / markup / concentration inputs for Spanish unconsolidated
 (U1, U2) industrial-company accounts, all size tiers, closing years 2014-2024.

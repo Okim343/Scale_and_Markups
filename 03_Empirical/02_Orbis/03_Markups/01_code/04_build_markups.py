@@ -7,7 +7,8 @@ on every firm-year of the trimmed sample in sample.markup_years (2014 is lag-onl
 The aggregate moments belong to 04_Moments; the report here gives per cell x year and pooled
 diagnostics: thetas, sales-, V- and (V + kexp)-weighted mean markups, unweighted and
 sales-weighted P10/P50/P90 (DLEU III.B weights firms by sales share), trim counts, and the GNR
-materials-based markup melast * rev / mate on the same firm-years (ORBIS_SPAIN_MARKUPS.md, D6c).
+materials-based markup melast * rev / mate on the same firm-years
+(02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MARKUPS.md, D6c).
 
 Reads   <output.intermediary_dir>/{markup_sample,thetas}.parquet, trim_waterfall.csv
         <compare.gnr_outdata_dir>/firm_year_rts.parquet
@@ -177,7 +178,8 @@ def main():
     manifest = {
         "description": "Orbis Spain firm-year markups following De Loecker, Eeckhout and Unger (2020): "
                        "V = mate + staf, rolling 5-year Wooldridge-IV elasticity by NAICS2 cell; "
-                       "cost-share alternative. Decisions: ORBIS_SPAIN_MARKUPS.md.",
+                       "cost-share alternative. Decisions: "
+                       "02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MARKUPS.md.",
         "created_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "commit": commit, "branch": branch, "code_dirty": dirty,
         "pipeline_version": config["pipeline_version"],
@@ -209,7 +211,8 @@ def main():
         "# Orbis Spain DLEU markups: report",
         "",
         f"Generated {manifest['created_utc']} from commit `{commit}` (code dirty: {dirty}). "
-        "Decisions: `ORBIS_SPAIN_MARKUPS.md`. markup_wi = theta_wi_c * rev / (mate + staf).",
+        "Decisions: `02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MARKUPS.md`. "
+        "markup_wi = theta_wi_c * rev / (mate + staf).",
         "",
         f"Firm-years {len(out):,} ({out['bvdid'].nunique():,} firms), {m0}-{m1}, 14 cells; "
         f"{int(out['in_iv_sample'].sum()):,} enter the IV.",

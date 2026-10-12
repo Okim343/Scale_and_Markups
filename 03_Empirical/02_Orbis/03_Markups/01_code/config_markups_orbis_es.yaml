@@ -1,6 +1,7 @@
 # =============================================================================
 # Orbis Spain firm-year markups following De Loecker, Eeckhout and Unger (2020, QJE).
-# Every choice below is documented in ORBIS_SPAIN_MARKUPS.md (repo root), Section 3 (D1-D6).
+# Every choice below is documented in Section 3 (D1-D6) of
+# 02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MARKUPS.md (local, gitignored).
 # The DLEU reference code is 03_Markups/00_DLEU_Code/ (read-only, gitignored).
 #
 #   python 01_fetch_rates.py [--refresh]   # ECB overnight rate, EONIA basis (public API)

@@ -7,7 +7,7 @@ section-level GFCF deflator (capital), GDP deflator (wage bill).
 Eurostat has no Spanish output (P1) or intermediate-consumption (P2) deflator at A64:
 Spain transmits P1/P2 in nama_10_a64 only at current prices, and no supply-use tables at
 previous-year prices. The VA deflator is therefore the only industry price index at A64.
-See ORBIS_SPAIN_CLEANING.md.
+See 02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_CLEANING.md.
 
     python 03_Empirical/02_Orbis/01_Cleaning/01_code/01b_fetch_deflators_es.py [--refresh]
 

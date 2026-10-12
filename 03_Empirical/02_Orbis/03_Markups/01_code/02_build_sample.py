@@ -1,6 +1,7 @@
 """Step 02: DLEU estimation and markup sample for Orbis Spain.
 
-Follows 01_Create_Data.do and the top of 02_Produce_Thetas_st.do (ORBIS_SPAIN_MARKUPS.md, D1-D6):
+Follows 01_Create_Data.do and the top of 02_Produce_Thetas_st.do
+(02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MARKUPS.md, D1-D6):
   1. Clean panel, the 14 GNR cells, years first_year..markup_years[1] (2014 is lag-only).
   2. V = mate + staf (COGS analogue); s_g = rev / V. One deflator (HICP), so s_g is nominal.
   3. Trim 1: keep p1 < s_g < p99, Stata percentiles by year pooled over cells.

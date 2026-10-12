@@ -18,7 +18,8 @@ The structural model has **no sector dimension**. NAICS2, represented in the pip
 │       ├── 02_code/          # bundle assembly pipeline
 │       └── 03_outdata/       # model-facing bundle and reference outputs
 └── 02_Orbis/                 # Spanish Orbis (WRDS-licensed data, all gitignored)
-    ├── 01_Cleaning/          # extraction + cleaning to a GNR-ready panel (ORBIS_SPAIN_*.md at repo root)
+    ├── 01_Cleaning/          # extraction + cleaning to a GNR-ready panel
+    │                         # (docs, local only: 02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_*.md)
     ├── 02_GNR/               # per-NAICS2-cell GNR on 00_GNR_core
     └── 03_Markups/
 

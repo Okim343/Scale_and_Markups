@@ -9,7 +9,8 @@ with r = ln(rev_D), c = ln(V_D), k = ln(tfas_D), L.k2 = (L.k)^2, i = ln(K - 0.9 
 is just-identified, so the GMM point estimate is 2SLS: b = (Z'X)^-1 Z'y. Standard errors are
 Stata's default for ivregress gmm (robust, no small-sample correction). No guardrails, as DLEU.
 theta_c of window t is assigned to year t; years in theta.impute_years (2015) take the first
-window's estimate and are flagged theta_imputed (ORBIS_SPAIN_MARKUPS.md, D2).
+window's estimate and are flagged theta_imputed
+(02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MARKUPS.md, D2).
 
 Alternative (paper Section VI.A): theta_cs = median of costshare1 = V / (V + kexp) by cell x year.
 

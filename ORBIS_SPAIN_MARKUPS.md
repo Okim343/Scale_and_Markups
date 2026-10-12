@@ -8,6 +8,8 @@ References:
   `03_Empirical/02_Orbis/03_Markups/00_DLEU_Code/` (`01_Create_Data.do`, `02_Produce_Thetas_st.do`,
   `03_Calibration_Moments.do`).
 - Paper: `01_Docs/risemkt_power.pdf` (Sections II.B-C, III.A-B, VI.A-B, Appendices A and B).
+- Worldscope comparison: De Loecker and Eeckhout, "Global Market Power" (10 Feb 2021 draft),
+  `01_Docs/Global_Markups.pdf`, Table 1.
 
 ## 1. What the DLEU code does (facts the plan rests on)
 
@@ -43,7 +45,9 @@ References:
     `theta_unified_const` (a constant gamma = theta_c + theta_k for their IRS model). It is **not** used in
     the markup.
 12. **Spain.** The QJE paper reports US numbers only. Spanish markups are in De Loecker and Eeckhout (2018),
-    "Global Market Power" (Worldscope); used only as a loose level check (D6c).
+    "Global Market Power" (Worldscope): Spain 1.34 in 2016, +0.24 since 1980 (Table 1). That paper
+    applies the **US** DLEU elasticities (NAICS2 x year) to COGS, sales weights, all sectors, mostly
+    listed firms with consolidated statements. Used only as a loose level check (D6c).
 
 ## 2. Mapping DLEU to Orbis
 
@@ -98,7 +102,9 @@ Notes on the choices:
   market rate, not an administered policy rate). €STR starts only in Oct 2019 and EONIA was €STR + 8.5 bp
   from then on, so splicing €STR + 8.5 bp after EONIA ends gives one series without a break. The ECB deposit
   facility rate was the alternative (administered; EONIA traded about 10 bp below it in 2015-2021).
-- **D6c, why Worldscope is only a loose check.** Worldscope covers a few hundred listed Spanish firms with true
+- **D6c, why Worldscope is only a loose check.** (Implemented in `04_build_markups.py`, config
+  `compare.worldscope`; level only, 2016, with two bridges: DLEU's constant 0.85 elasticity, and the
+  200 / 1,000 largest firms by sales.) Worldscope covers a few hundred listed Spanish firms with true
   COGS and a different sector mix; this sample is about 400k mostly small private firms with V = mate + staf.
   Data source, firm set and cost concept all differ. The sales-weighted mean, dominated by the largest firms,
   is the closest object to compare. The GNR comparison holds the data fixed and isolates the method.
@@ -167,8 +173,7 @@ cell-year.
 
 ## 8. Open items
 
-- De Loecker and Eeckhout (2018) PDF with the Spain figures (user will add it to `01_Docs/`); the
-  Worldscope check is not yet in the report.
+None.
 
 ## 9. Results (run of 2026-10-12)
 
@@ -219,3 +224,21 @@ in most cells.
 **GNR comparison** (2.70M common firm-years, 74% of the markup sample): the GNR materials-based markup
 melast * rev / mate is lower, sales-weighted 1.06-1.10 vs 1.22-1.26 and median 0.93-0.96 vs 1.14-1.16,
 with Spearman rank correlation 0.70-0.74 by year (0.58 in 42 to 0.85 in 72 by cell).
+
+**Worldscope level check, 2016** (sales-weighted; loose, see D6c; Orbis has unconsolidated accounts only):
+
+| series | firms | markup |
+|---|---|---|
+| Worldscope Spain (De Loecker and Eeckhout, Table 1) | | 1.34 |
+| Orbis baseline | 387,839 | 1.284 |
+| Orbis, constant theta 0.85 | 387,839 | 1.164 |
+| Orbis top 200 firms by sales, baseline | 200 | 1.320 |
+| Orbis top 200 firms by sales, theta 0.85 | 200 | 1.202 |
+| Orbis top 1,000 firms by sales, baseline | 1,000 | 1.303 |
+| Orbis top 1,000 firms by sales, theta 0.85 | 1,000 | 1.183 |
+
+The baseline level is close to Worldscope (1.28 vs 1.34; 1.32 for the 200 largest firms). The closeness
+partly reflects offsetting differences: V = mate + staf includes all labour, so rev/V is lower than
+sales/COGS, while the Spanish elasticities (sales-weighted 0.94) are above the US ones Worldscope uses.
+With an elasticity near the US level (0.85) the Orbis markup is 1.16-1.20, below Worldscope. The level
+match is therefore not evidence that the two measures agree firm by firm.

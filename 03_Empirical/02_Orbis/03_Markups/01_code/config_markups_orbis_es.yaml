@@ -65,6 +65,16 @@ theta:
 compare:
   # GNR materials-based markup melast * rev / mate = melast / exp(s), same firm-years.
   gnr_outdata_dir: "03_Empirical/02_Orbis/02_GNR/03_outdata"
+  # Loose level check (D6c): De Loecker and Eeckhout, "Global Market Power" (10 Feb 2021 draft,
+  # 01_Docs/Global_Markups.pdf), Table 1, Spain. Worldscope (mostly listed, consolidated),
+  # COGS, US DLEU elasticities by NAICS2 x year, sales-weighted, all sectors.
+  worldscope:
+    source: "De Loecker and Eeckhout (2021 draft), Table 1"
+    year: 2016
+    markup_sales_w: 1.34
+    change_since_1980: 0.24
+    constant_theta: 0.85        # DLEU's calibrated constant elasticity (paper Fig. II A)
+    top_n_firms: [200, 1000]    # selection bridge: largest firms by sales in that year
 
 # --- Outputs --------------------------------------------------------------------------
 output:

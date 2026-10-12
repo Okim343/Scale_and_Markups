@@ -146,6 +146,30 @@ def main():
     logger.info(f"GNR comparison: {len(cmp):,} common firm-years "
                 f"({len(cmp) / len(df):.1%} of the markup sample)")
 
+    # --- Worldscope level check (loose) ----------------------------------------------------
+    ws = config["compare"]["worldscope"]
+    wy = df[df["year"] == int(ws["year"])]
+    ratio = wy["rev_D"] / wy["V_D"]
+
+    def sw(x, g):
+        return np.average(x, weights=g["rev_D"])
+    ws_rows = [
+        {"series": f"Worldscope Spain ({ws['source']})", "n_firms": "", "markup_sales_w": ws["markup_sales_w"]},
+        {"series": "Orbis, baseline (theta_wi_c)", "n_firms": len(wy), "markup_sales_w": sw(wy["markup_wi"], wy)},
+        {"series": f"Orbis, constant theta = {ws['constant_theta']}", "n_firms": len(wy),
+         "markup_sales_w": ws["constant_theta"] * sw(ratio, wy)},
+    ]
+    for n in ws["top_n_firms"]:
+        top = wy.nlargest(int(n), "rev_D")
+        ws_rows += [
+            {"series": f"Orbis, top {n} firms by sales, baseline", "n_firms": len(top),
+             "markup_sales_w": sw(top["markup_wi"], top)},
+            {"series": f"Orbis, top {n} firms by sales, constant theta = {ws['constant_theta']}",
+             "n_firms": len(top), "markup_sales_w": ws["constant_theta"] * sw(top["rev_D"] / top["V_D"], top)},
+        ]
+    wst = pd.DataFrame(ws_rows)
+    logger.info(f"Worldscope check, {ws['year']}:\n" + wst.round(3).to_string(index=False))
+
     # --- Manifest -------------------------------------------------------------------------
     commit, branch, dirty = git_state()
     panel_path = resolve(config["input"]["panel"])
@@ -214,6 +238,16 @@ def main():
         md_table(gy),
         "",
         md_table(gc),
+        "",
+        f"## Loose level check: Worldscope Spain, {ws['year']}",
+        "",
+        "Worldscope covers mostly listed firms with consolidated statements, true COGS, all sectors, "
+        "and US DLEU elasticities; this sample is unconsolidated Orbis accounts, V = mate + staf, 14 "
+        "cells, Spanish elasticities. Only the level is comparable (the paper's +"
+        f"{ws['change_since_1980']} is relative to 1980). The bridges change one ingredient at a time: "
+        "the elasticity (DLEU's constant) and the firm set (largest firms by sales).",
+        "",
+        md_table(wst),
         "",
         "## Trim cutoffs and user cost by year",
         "",

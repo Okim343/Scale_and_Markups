@@ -1,0 +1,74 @@
+# =============================================================================
+# Orbis Spain firm-year markups following De Loecker, Eeckhout and Unger (2020, QJE).
+# Every choice below is documented in ORBIS_SPAIN_MARKUPS.md (repo root), Section 3 (D1-D6).
+# The DLEU reference code is 03_Markups/00_DLEU_Code/ (read-only, gitignored).
+#
+#   python 01_fetch_rates.py [--refresh]   # ECB overnight rate, EONIA basis (public API)
+#   python 02_build_sample.py              # sample, user cost, DLEU trims, lags after trimming
+#   python 03_estimate_thetas.py           # rolling-window Wooldridge-IV + cost-share thetas
+#   python 04_build_markups.py             # markups, comparisons, manifest, report
+#
+# Firm-level outputs are WRDS derivatives: they stay under the gitignored 01_intermediary/
+# and 03_outdata/. All relative paths resolve against the project root.
+# =============================================================================
+
+pipeline_version: "0.1.0-orbis-es-dleu"
+
+# --- Input ---------------------------------------------------------------------
+input:
+  panel: "03_Empirical/02_Orbis/01_Cleaning/01_intermediary/orbis_es_clean_panel.parquet"
+  deflators: "03_Empirical/02_Orbis/01_Cleaning/00_indata/deflators/deflators_es.csv"
+  id_col: bvdid
+
+# --- Sample (D4) ------------------------------------------------------------------
+sample:
+  first_year: 2014            # lag-only year: trimmed and used for lags, no markup output
+  markup_years: [2015, 2023]  # 2024 dropped (incomplete), as DLEU drop their last year
+  cells: [11, 21, 22, 23, 31, 42, 44, 48, 51, 54, 56, 61, 71, 72]   # the 14 GNR cells
+  # Money columns (HICP-deflated, 2019 EUR): one deflator for everything, as the DLEU code.
+  revenue: rev_D              # DLEU sale
+  variable_input: [mate_D, staf_D]   # D1: V = mate + staf, the COGS analogue
+  capital: tfas_D             # D4: tfas (DLEU ppegt); rows need tfas > 0 (pos_tfas)
+  keep_cols: [naics4, nace3, cnae4, mate_D, staf_D]
+
+# --- User cost of capital (D3) ------------------------------------------------------
+# usercost_t = (r_t - pi_t + premium) / 100, DLEU: (FFR - GDP-deflator inflation + 12) / 100.
+user_cost:
+  rates_dir: "03_Empirical/02_Orbis/03_Markups/00_indata/rates"
+  # EONIA-basis overnight rate: published EONIA through its last full year, then
+  # euro short-term rate + spread (EONIA's own definition from 2019-10-02 on).
+  eonia_last_year: 2021
+  estr_spread_pp: 0.085
+  inflation_series: gdp_defl  # Spanish GDP deflator (Eurostat nama_10_gdp), annual growth in %
+  premium_pp: 12.0            # depreciation + risk premium, as DLEU
+
+# --- Trimming (D5), exactly as the DLEU code -----------------------------------------
+trimming:
+  by: year                    # percentiles by year, pooled over cells
+  pct: [1, 99]
+  # Stata `egen pctile` definition (see markups_common.stata_pctile).
+  sale_v_strict: true         # 01_Create_Data.do: keep if p1 < s_g < p99
+  costshare_inclusive: true   # 02_Produce_Thetas_st.do: drop if cs > p99 | cs < p1
+  # costshare2 (with xsga) has no Orbis analogue and is skipped (D1).
+
+# --- Output elasticities (D2) ---------------------------------------------------------
+theta:
+  depreciation: 0.1           # Inv = K - (1 - depr) L.K, i = ln(Inv), as DLEU
+  window_half_width: 2        # window t-2..t+2, truncated at the data edges
+  centres: [2016, 2023]       # first year with L.i is 2016 (needs K in 2014 and 2015)
+  # Years before the first centre take the first window's theta, flagged theta_imputed.
+  impute_years: [2015]
+  min_obs: 200                # hard error if a cell-window regression has fewer rows
+  cost_share: median          # paper VI.A: median of V / (V + kexp) by cell x year
+
+# --- Comparisons (D6c) ----------------------------------------------------------------------
+compare:
+  # GNR materials-based markup melast * rev / mate = melast / exp(s), same firm-years.
+  gnr_outdata_dir: "03_Empirical/02_Orbis/02_GNR/03_outdata"
+
+# --- Outputs --------------------------------------------------------------------------
+output:
+  intermediary_dir: "03_Empirical/02_Orbis/03_Markups/01_intermediary"
+  outdata_dir: "03_Empirical/02_Orbis/03_Markups/03_outdata"
+
+log_level: INFO

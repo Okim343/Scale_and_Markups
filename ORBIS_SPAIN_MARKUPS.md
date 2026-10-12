@@ -136,13 +136,14 @@ YAML config holding every choice):
 | `03_estimate_thetas.py` | rolling-window WI-IV per cell, edge rule for 2015, cost-share theta; writes `01_intermediary/thetas.parquet` (cell x year: theta_c, theta_k, n_obs, window, first-stage diagnostics) |
 | `04_build_markups.py` | merge thetas, compute markups, write `03_outdata/firm_year_markups.parquet`, `manifest.yaml`, `markups_report.md` and `cell_year_summary.csv`; GNR comparison |
 | `05_stata_crosscheck.py`, `check_stata.do` | verification: `prepare` exports one cell-window and synthetic percentile groups, `check_stata.do` runs DLEU's `ivregress gmm` line and `egen pctile` in Stata, `compare` reports the differences |
+| `06_plot_aggregate_markup.py` | time series of the aggregate markup, sales- and cost-weighted (cost = V, DLEU `mu_cogs_w`), house style with a centred 3-year moving average; writes `03_outdata/aggregate_markup.{png,csv}` |
 | `markups_common.py` | paths, config, logging, git state, `stata_pctile` (Stata `egen pctile` definition), sales-weighted quantile |
 
 Run (about 40 s locally, no workstation needed):
 
 ```bash
 cd 03_Empirical/02_Orbis/03_Markups/01_code
-python 01_fetch_rates.py && python 02_build_sample.py && python 03_estimate_thetas.py && python 04_build_markups.py
+python 01_fetch_rates.py && python 02_build_sample.py && python 03_estimate_thetas.py && python 04_build_markups.py && python 06_plot_aggregate_markup.py
 ```
 
 All firm-level files stay in the gitignored `01_intermediary/` and `03_outdata/` (WRDS derivatives). No

@@ -16,6 +16,8 @@ from typing import Any, Mapping
 
 import yaml
 
+from .model.pool import DEFAULT_ALPHA_CAP_FACTOR
+
 
 SIM_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG_PATH = SIM_DIR / "config_simulation.yaml"
@@ -63,11 +65,17 @@ class MonteCarloConfig:
 
 @dataclass(frozen=True)
 class ParameterBlock:
-    """Assigned primitives only; the calibrated vector comes from the params file."""
+    """Assigned primitives only; the calibrated vector comes from the params file.
+
+    ``alpha_cap_factor`` caps alpha at ``factor * gamma/(gamma-1)`` in every draw
+    (calibration, simulation, welfare); ``None`` (yaml ``null``) samples the raw
+    support. See :func:`orbis_model.model.pool.alpha_cap`.
+    """
     beta: float
     delta_K: float
     phi: float
     H: int
+    alpha_cap_factor: float | None = DEFAULT_ALPHA_CAP_FACTOR
 
 
 @dataclass(frozen=True)
@@ -132,6 +140,11 @@ def load_config(path: Path | str | None = None) -> SimulationConfig:
     assigned = raw.get("parameters", {}) or {}
     participation = raw.get("participation", {}) or {}
     welfare = raw.get("welfare", {}) or {}
+    cap_factor = assigned.get("alpha_cap_factor", DEFAULT_ALPHA_CAP_FACTOR)
+    if cap_factor is not None:
+        cap_factor = float(cap_factor)
+        if not 0.0 < cap_factor <= 1.0:
+            raise ValueError("parameters.alpha_cap_factor must lie in (0, 1] or be null")
     return SimulationConfig(
         path=cfg_path,
         bundle_dir=_resolve(paths["bundle_dir"], cfg_path.parent),
@@ -153,6 +166,7 @@ def load_config(path: Path | str | None = None) -> SimulationConfig:
             beta=float(assigned.get("beta", 0.96)),
             delta_K=float(assigned.get("delta_K", 0.06)),
             phi=float(assigned.get("phi", 1.0)), H=int(assigned.get("H", 1000)),
+            alpha_cap_factor=cap_factor,
         ),
         participation=ParticipationConfig(
             K_switch=int(participation.get("K_switch", 3)),

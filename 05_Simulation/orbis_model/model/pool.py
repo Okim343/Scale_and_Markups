@@ -18,6 +18,17 @@ Appendix A.3):
 Entry is EMX-style and exogenous: each sector draws ``n_m = max(1, Poisson(N))``
 producing firms (:func:`allocate_poisson`). All allocated firms produce; there is
 no per-period operating cost and no profitability cutoff.
+
+**Alpha cap.** A firm with ``alpha >= gamma/(gamma-1)`` (the smallest EMX markup)
+earns negative variable profit at small share, and the inner Cournot fixed point
+is locally unstable for it: such firms either sit at the share floor or take over
+their market, and the anchored GE has no root (see
+``02_Drafts/md_files/ORBIS_migration/ORBIS_ANCHORED_GE_DIAGNOSIS.md``).
+:func:`draw_pool` therefore caps the drawn alpha at
+``alpha_cap(gamma, factor) = factor * gamma/(gamma-1)``, recomputed at every
+``gamma``. The cap changes alpha values only: the node draw, the copula rank
+``tilde_alpha`` (from the raw support) and the v draw are the same with or
+without it, so common random numbers are preserved across ``gamma``.
 """
 
 from __future__ import annotations
@@ -27,6 +38,26 @@ import warnings
 
 import numpy as np
 from scipy.special import ndtr, ndtri
+
+
+DEFAULT_ALPHA_CAP_FACTOR = 0.99
+
+
+def alpha_cap(gamma: float, factor: float | None = DEFAULT_ALPHA_CAP_FACTOR) -> float | None:
+    """Upper bound ``factor * gamma/(gamma-1)`` on alpha; ``None`` when ``factor`` is ``None``.
+
+    ``factor`` must lie in (0, 1]. Keep a margin below one: at the bound itself the
+    fixed-point multiplier of a small firm tends to one and inner solves stall
+    (factor 0.999 or 1.0 hit ``max_iter`` in the diagnosis; 0.99 does not).
+    """
+    if factor is None:
+        return None
+    factor = float(factor)
+    if not 0.0 < factor <= 1.0:
+        raise ValueError(f"alpha cap factor must lie in (0, 1]; got {factor}")
+    if not gamma > 1.0:
+        raise ValueError(f"gamma must exceed one; got {gamma}")
+    return factor * gamma / (gamma - 1.0)
 
 
 @dataclass(frozen=True)
@@ -89,6 +120,7 @@ def draw_pool(
     H: int,
     rng: int | np.random.SeedSequence,
     v_min: float = 1.0,
+    alpha_max: float | None = None,
 ) -> PoolDraw:
     """Draw a common ``(M,H)`` pool with the α–v copula and a Pareto-ξ v marginal.
 
@@ -97,6 +129,9 @@ def draw_pool(
     *rank* dependence while scaling capability without redrawing. ``N`` is the
     Poisson entry mean. ``rho_bar`` lies in (-1, 1): a negative value gives
     negative α–v rank dependence (Salgado et al. calibrate rho_{z,eta} = -0.25).
+    ``alpha_max`` (from :func:`alpha_cap`) caps the drawn alpha from above; the
+    copula rank ``tilde_alpha`` is still computed on the raw support, so capped
+    firms keep their raw ladder position.
     """
     support = np.asarray(alpha_support, dtype=np.float64)
     if support.ndim != 1 or support.size == 0:
@@ -109,10 +144,14 @@ def draw_pool(
         raise ValueError(f"rho_bar must lie in (-1, 1); got {rho_bar}")
     if v_min <= 0.0:
         raise ValueError("v_min must be positive")
+    if alpha_max is not None and not alpha_max > 0.0:
+        raise ValueError(f"alpha_max must be positive; got {alpha_max}")
 
     gen = np.random.default_rng(rng)
     node = gen.integers(0, support.size, size=(M, H))
     alpha = support[node]
+    if alpha_max is not None:
+        alpha = np.minimum(alpha, float(alpha_max))
     ranks = (np.argsort(np.argsort(support, kind="stable"), kind="stable") + 0.5) / support.size
     tilde_alpha = ndtri(ranks[node])
     eps = gen.standard_normal((M, H))

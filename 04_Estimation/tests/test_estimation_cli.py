@@ -121,6 +121,7 @@ def test_calibrate_writes_params_with_provenance_and_validate_reads_it(tmp_path)
     params, wf, initial, _ = load_params_file(params_path, bundle_dir=bundle)
     assert params.eta < params.gamma and wf == 0.0 and initial is not None
     assert -0.95 < params.rho_bar < 0.95
+    assert data["model"] == {"alpha_cap_factor": 0.99}
     assert _validate().main(["--config", str(est_cfg), "--params", str(params_path)]) == 0
 
 

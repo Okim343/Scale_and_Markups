@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
         K_switch=cfg.participation.K_switch,
         love_of_variety=cfg.participation.love_of_variety,
         market_solver_kwargs=cfg.market.to_kwargs(), wf_reference=wf,
-        initial=initial,
+        initial=initial, alpha_cap_factor=cfg.parameters.alpha_cap_factor,
         out_dir=out_dir, panel_filename=f"sim_panel_{tag}.parquet",
     )
     pooled_moments_table(sim, primitives).to_parquet(out_dir / f"sim_moments_{tag}.parquet", index=False)

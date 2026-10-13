@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from ..model.normalization import PooledEquilibrium, PooledParams, solve_pooled_ge
-from ..model.pool import draw_pool
+from ..model.pool import DEFAULT_ALPHA_CAP_FACTOR, alpha_cap, draw_pool
 from ..primitives import ModelPrimitives
 
 
@@ -67,10 +67,13 @@ def run_simulation(
     panel_filename: str = "sim_panel.parquet",
     tol: float = 1e-5,
     max_nfev: int = 30,
+    alpha_cap_factor: float | None = DEFAULT_ALPHA_CAP_FACTOR,
 ) -> SimulationResult:
+    """Frozen-``v_min`` GE on fresh draws; alpha capped as in the calibration."""
     draw = draw_pool(
         primitives.alpha_support, xi=params.xi, rho_bar=params.rho_bar, N=params.N,
         M=M, H=params.H, rng=master_seed, v_min=params.v_min,
+        alpha_max=alpha_cap(params.gamma, alpha_cap_factor),
     )
     eq = solve_pooled_ge(
         draw.alpha, draw.v, params, beta=beta, delta_K=delta_K,

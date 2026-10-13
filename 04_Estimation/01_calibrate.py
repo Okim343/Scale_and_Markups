@@ -58,7 +58,8 @@ def main(argv: list[str] | None = None) -> int:
     out_dir = Path(args.out_dir).resolve() if args.out_dir else cfg.out_results_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"bundle {cfg.bundle_dir} (window {primitives.window_tag}); M={M}, seed={seed}, "
-                f"max_nfev={max_nfev}; targeted {list(cfg.moment_keys)}")
+                f"max_nfev={max_nfev}; targeted {list(cfg.moment_keys)}; "
+                f"alpha_cap_factor={sim.parameters.alpha_cap_factor}")
     logger.info(f"initial (xi, N, gamma, eta, rho_bar) = ({initial.xi:.6g}, {initial.N:.6g}, "
                 f"{initial.gamma:.6g}, {initial.eta:.6g}, {initial.rho_bar:.6g}); "
                 f"rho_bar bounds {cfg.bounds['rho_bar']}")
@@ -76,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         K_switch=sim.participation.K_switch,
         love_of_variety=sim.participation.love_of_variety,
         market_solver_kwargs=sim.market.to_kwargs(),
+        alpha_cap_factor=sim.parameters.alpha_cap_factor,
         ftol=cfg.ftol, xtol=cfg.xtol,
         max_nfev=max_nfev,
         checkpoint_path=out_dir / "calibration_checkpoint.jsonl",
@@ -99,6 +101,7 @@ def main(argv: list[str] | None = None) -> int:
             "P": result.reference.P, "L": result.reference.L,
         },
         provenance=provenance,
+        model={"alpha_cap_factor": sim.parameters.alpha_cap_factor},
         entry={
             "sunk_entry_cost_F": sunk_entry_cost,
             "varphi": cfg.varphi,

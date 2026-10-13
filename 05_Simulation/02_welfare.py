@@ -23,7 +23,7 @@ from pathlib import Path
 import time
 
 from orbis_model.config import load_config, setup_logger
-from orbis_model.model.pool import draw_pool
+from orbis_model.model.pool import alpha_cap, draw_pool
 from orbis_model.params import build_provenance, file_sha256, load_simulation_inputs, write_yaml
 from orbis_model.simulation.cross_section import build_firm_panel
 from orbis_model.welfare import solve_market_and_planner, two_channel_decomposition, welfare_decomposition_table
@@ -55,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     draw = draw_pool(
         primitives.alpha_support, xi=params.xi, rho_bar=params.rho_bar, N=params.N,
         M=M, H=params.H, rng=seed, v_min=params.v_min,
+        alpha_max=alpha_cap(params.gamma, cfg.parameters.alpha_cap_factor),
     )
     pair = solve_market_and_planner(
         draw.alpha, draw.v, params, beta=cfg.parameters.beta,

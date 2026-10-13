@@ -18,7 +18,7 @@ from orbis_model.model.normalization import (
     PooledParams,
     solve_pooled_ge_anchored,
 )
-from orbis_model.model.pool import draw_pool
+from orbis_model.model.pool import DEFAULT_ALPHA_CAP_FACTOR, alpha_cap, draw_pool
 from orbis_model.primitives import ModelPrimitives
 
 
@@ -36,11 +36,18 @@ def pooled_moments_at_params(
     K_switch: int = 3,
     love_of_variety: bool | str = False,
     market_solver_kwargs: dict | None = None,
+    alpha_cap_factor: float | None = DEFAULT_ALPHA_CAP_FACTOR,
 ) -> tuple[dict[str, float], FullPoolReference, PooledEquilibrium]:
-    """Draw CRNs (incl. the exogenous Poisson mask) and solve GE on that mask."""
+    """Draw CRNs (incl. the exogenous Poisson mask) and solve GE on that mask.
+
+    The drawn alpha is capped at ``alpha_cap_factor * gamma/(gamma-1)`` at this
+    evaluation's ``gamma`` (:func:`orbis_model.model.pool.alpha_cap`); ``None``
+    samples the raw support.
+    """
     draw = draw_pool(
         primitives.alpha_support, xi=params.xi, rho_bar=params.rho_bar, N=params.N,
         M=M, H=params.H, rng=rng, v_min=1.0,
+        alpha_max=alpha_cap(params.gamma, alpha_cap_factor),
     )
     equilibrium = solve_pooled_ge_anchored(
         draw.alpha, draw.v, params, beta=beta, delta_K=delta_K,

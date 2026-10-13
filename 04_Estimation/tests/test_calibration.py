@@ -157,3 +157,18 @@ def test_v_min_anchoring_solves_median_output():
 def test_eta_constraint_is_enforced_by_parameterization():
     with pytest.raises(ValueError, match="1 < eta < gamma"):
         PooledParams(xi=8.0, N=2.0, gamma=2.0, eta=2.1, H=4)
+
+
+def test_objective_caps_alpha_at_this_evaluations_gamma():
+    prim = ModelPrimitives(
+        alpha_support=np.linspace(0.7, 1.3, 20), a=0.34, phi_v=0.45,
+        n_firms_cs=120.0, H=6, active_window=(2015, 2019),
+    )
+    for gamma in (5.0, 9.0):
+        params = PooledParams(xi=8.0, N=4.0, gamma=gamma, eta=1.9, a=prim.a, H=prim.H, phi_v=prim.phi_v)
+        _, _, eq = pooled_moments_at_params(params, prim, M=8, rng=3, market_solver_kwargs=SOLVER)
+        assert eq.alpha.max() == pytest.approx(0.99 * gamma / (gamma - 1.0))
+        _, _, raw = pooled_moments_at_params(
+            params, prim, M=8, rng=3, market_solver_kwargs=SOLVER, alpha_cap_factor=None,
+        )
+        assert raw.alpha.max() > eq.alpha.max()

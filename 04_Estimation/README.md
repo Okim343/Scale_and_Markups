@@ -30,6 +30,15 @@ pure cost-weighted markup `sum TC mu / sum TC`; the model's `mu_cw_alpha` (reven
 reported but not targeted. `alpha_rts_gap_top5_bottom50` is the rho_bar target; `rho_bar` is calibrated in
 `[-0.95, 0.95]` (negative values allowed, Salgado et al. find -0.25) and starts at 0.
 
+**Alpha cap (gamma-dependent).** Every objective evaluation caps the drawn alpha at
+`alpha_cap_factor * gamma/(gamma-1)` at that evaluation's gamma (`parameters.alpha_cap_factor` in the
+simulation config, 0.99). Firms above `gamma/(gamma-1)` earn negative variable profit at small share, and
+without the cap the anchored GE has no root on the Orbis support
+(`02_Drafts/md_files/ORBIS_migration/ORBIS_ANCHORED_GE_DIAGNOSIS.md`). The cap keeps the common random
+numbers (node draw, copula rank on the raw support, v draw). The model RTS gap is computed on capped alpha
+while its target uses raw RTS. The factor is written to the params file (`model.alpha_cap_factor`), and
+05_Simulation refuses a config with a different factor.
+
 **Market definition mismatch (accepted).** The bundle measures concentration (`cr4, cr20, top1pct,
 top5pct`) and the RTS gap within NAICS4 markets, but `emx_slope` across 14 NAICS2 cells. The model
 computes all of them on the same simulated markets, as in 04_Code; there is no nested market structure.

@@ -21,6 +21,7 @@ import numpy as np
 from scipy.optimize import least_squares
 
 from orbis_model.model.normalization import FullPoolReference, PooledEquilibrium, PooledParams
+from orbis_model.model.pool import DEFAULT_ALPHA_CAP_FACTOR
 from orbis_model.model.pricing import DEFAULT_PHI_V
 from orbis_model.primitives import ModelPrimitives
 from .anchor_diagnostics import anchor_diagnostics
@@ -163,6 +164,7 @@ def calibrate_pooled(
     K_switch: int = 3,
     love_of_variety: bool | str = False,
     market_solver_kwargs: dict | None = None,
+    alpha_cap_factor: float | None = DEFAULT_ALPHA_CAP_FACTOR,
     ftol: float = 1e-4,
     xtol: float = 1e-4,
     max_nfev: int = 40,
@@ -171,7 +173,9 @@ def calibrate_pooled(
     """Fit the anchored five-parameter vector jointly.
 
     ``initial`` is ``(xi, N, gamma, eta, rho_bar)``. Residuals are
-    :func:`objective.weighted_relative_residuals` over ``moment_keys``.
+    :func:`objective.weighted_relative_residuals` over ``moment_keys``. Every
+    evaluation caps alpha at ``alpha_cap_factor * gamma/(gamma-1)`` at its own
+    ``gamma`` (``None`` samples the raw support).
     """
     x0 = _encode(initial, rho_bar_bounds=rho_bar_bounds)
     ckpt = Path(checkpoint_path) if checkpoint_path is not None else None
@@ -204,6 +208,7 @@ def calibrate_pooled(
             params, primitives, M=M, rng=rng, beta=beta, delta_K=delta_K,
             K_switch=K_switch, love_of_variety=love_of_variety,
             market_solver_kwargs=market_solver_kwargs,
+            alpha_cap_factor=alpha_cap_factor,
         )
         # EMX (2022) normalizer 1 + |target|; see weighted_relative_residuals.
         arr = weighted_relative_residuals(
@@ -242,6 +247,7 @@ def calibrate_pooled(
         params, primitives, M=M, rng=rng, beta=beta, delta_K=delta_K,
         K_switch=K_switch, love_of_variety=love_of_variety,
         market_solver_kwargs=market_solver_kwargs,
+        alpha_cap_factor=alpha_cap_factor,
     )
     params = PooledParams(
         xi=params.xi, N=params.N, gamma=params.gamma, eta=params.eta,

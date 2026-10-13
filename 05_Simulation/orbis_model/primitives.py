@@ -6,8 +6,10 @@ Replaces the model-input half of ``04_Code/steady_state/io_bundle.py`` and
 
 * ``F_alpha.parquet``: a single pooled scalability distribution with columns
   ``node_id, u, weight, alpha`` (equal-mass nodes, no ``sector_id``). The
-  ``alpha`` column is the model-facing support and is sampled verbatim: raw GNR
-  returns to scale, no clip or shrink.
+  ``alpha`` column is the model-facing support: raw GNR returns to scale, no
+  clip or shrink in the bundle. The draws cap it at
+  ``alpha_cap_factor * gamma/(gamma-1)`` (``model.pool.alpha_cap``), so the
+  sampled support depends on the calibrated ``gamma``.
 * ``aggregate_moments.yaml``: the model inputs ``active_window``, ``a`` (capital
   share of value added, in (0, 1)), ``phi_v`` (gross-output value-added weight,
   in (0, 1]) and ``n_firms_cs`` (population firm count); optional

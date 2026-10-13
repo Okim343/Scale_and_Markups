@@ -14,7 +14,7 @@ are in [`02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MOMENTS.md`](../02_Draft
 
 | Input | Where | Role |
 |---|---|---|
-| `F_alpha.parquet` | `03_Empirical/02_Orbis/04_Moments/03_outdata/` | pooled scalability support (`node_id, u, weight, alpha`, no `sector_id`), sampled verbatim |
+| `F_alpha.parquet` | `03_Empirical/02_Orbis/04_Moments/03_outdata/` | pooled scalability support (`node_id, u, weight, alpha`, no `sector_id`); raw in the bundle, capped at draw time at `alpha_cap_factor * gamma/(gamma-1)` (`parameters.alpha_cap_factor`, 0.99) |
 | `aggregate_moments.yaml` | same | model inputs `active_window`, `a`, `phi_v`, `n_firms_cs` (required), `mean_firms_per_sector` (diagnostic only) |
 | params file | `paths.params_file`, default `04_Estimation/out_results/calibrated_params.yaml` | calibrated `(xi, N, gamma, eta, rho_bar)`, anchored `v_min`, GE reference prices, provenance |
 | `config_simulation.yaml` | this folder | paths, Monte Carlo size and seed, `beta, delta_K, phi, H`, participation, solver, welfare size |

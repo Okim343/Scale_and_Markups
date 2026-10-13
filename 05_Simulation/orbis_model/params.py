@@ -8,6 +8,8 @@ Ported from ``04_Code/steady_state/__main__.py`` (``_load_calibration_yaml``,
   scale ``v_min`` and anchor ``y_hat``, and the assigned ``a, H, phi_v``;
 * ``reference``: the GE prices of the anchored solve (``w, R, X_market, ...``),
   used as the initial condition of the frozen-technology GE solves downstream;
+* ``model``: model settings the calibrated vector depends on
+  (``alpha_cap_factor``); the simulation refuses a config that differs;
 * free-form blocks written by the estimation (``entry``, ``fit``, ...);
 * ``provenance``: the sha256 of the bundle's ``aggregate_moments.yaml`` and
   ``F_alpha.parquet`` (``bundle_sha256``), plus the bundle manifest sha256,
@@ -170,6 +172,22 @@ def check_bundle_hashes(data: Mapping[str, Any], bundle_dir: Path | str, *, sour
         )
 
 
+def check_alpha_cap_factor(
+    data: Mapping[str, Any], factor: float | None, *, source: str = "params file",
+) -> None:
+    """Raise unless the file's ``model.alpha_cap_factor`` equals ``factor``.
+
+    A file without a ``model`` block predates the cap and was fit on the raw
+    support (factor ``None``).
+    """
+    recorded = (data.get("model") or {}).get("alpha_cap_factor")
+    if recorded != factor:
+        raise ValueError(
+            f"{source} was calibrated with alpha_cap_factor={recorded!r} but the config "
+            f"sets {factor!r}; refusing to run"
+        )
+
+
 def load_params_file(
     path: Path | str, *, bundle_dir: Path | str,
 ) -> tuple[PooledParams, float | None, tuple[float, float] | None, dict[str, Any]]:
@@ -213,9 +231,10 @@ def load_simulation_inputs(
     ``(primitives, params, wf_reference, initial)``.
     """
     primitives = load_primitives(cfg.bundle_dir, H=cfg.parameters.H)
-    params, wf, initial, _ = load_params_file(params_path, bundle_dir=cfg.bundle_dir)
+    params, wf, initial, data = load_params_file(params_path, bundle_dir=cfg.bundle_dir)
     if (params.a, params.phi_v) != (primitives.a, primitives.phi_v):
         raise ValueError("params file a/phi_v differ from the bundle")
+    check_alpha_cap_factor(data, cfg.parameters.alpha_cap_factor, source=str(params_path))
     if logger is not None:
         if params.H != primitives.H:
             logger.warning(f"params file H={params.H} differs from config H={primitives.H}; "

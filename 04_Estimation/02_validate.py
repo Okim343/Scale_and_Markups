@@ -33,7 +33,9 @@ from orbis_estimation.config import initial_params, load_config
 from orbis_estimation.objective import pooled_moments_at_params, weighted_relative_residuals
 from orbis_estimation.targets import load_targets
 from orbis_model.config import setup_logger
-from orbis_model.params import build_provenance, load_params_file, write_params_file
+from orbis_model.params import (
+    build_provenance, check_alpha_cap_factor, load_params_file, write_params_file,
+)
 from orbis_model.primitives import load_primitives
 from orbis_model.simulation.cross_section import run_simulation
 from orbis_model.simulation.moments import economy_moments
@@ -82,9 +84,11 @@ def main(argv: list[str] | None = None) -> int:
         K_switch=sim.participation.K_switch,
         love_of_variety=sim.participation.love_of_variety,
         market_solver_kwargs=sim.market.to_kwargs(),
+        alpha_cap_factor=sim.parameters.alpha_cap_factor,
     )
     if args.params:
-        params, wf, initial, _ = load_params_file(args.params, bundle_dir=cfg.bundle_dir)
+        params, wf, initial, data = load_params_file(args.params, bundle_dir=cfg.bundle_dir)
+        check_alpha_cap_factor(data, sim.parameters.alpha_cap_factor, source=str(args.params))
         result = run_simulation(
             primitives, params, M=M, master_seed=seed, wf_reference=wf, initial=initial, **common,
         )
@@ -124,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
                 "P": reference.P, "L": reference.L,
             },
             provenance=provenance,
+            model={"alpha_cap_factor": sim.parameters.alpha_cap_factor},
             fit={
                 "note": "evaluation at config initial_values (not a fit); v_min from the anchored solve",
                 "cost": cost,

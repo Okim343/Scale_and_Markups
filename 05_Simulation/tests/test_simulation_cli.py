@@ -117,7 +117,7 @@ def _setup_run(tmp_path, *, rho_bar=0.3):
     params = PooledParams(xi=8.0, N=3.0, gamma=3.8, eta=2.0, rho_bar=rho_bar,
                           a=0.35, H=5, phi_v=0.45)
     write_params_file(params_file, params, reference={"w": 1.0, "X_market": 1.0, "wf_reference": 0.0},
-                      provenance=prov)
+                      provenance=prov, model={"alpha_cap_factor": 0.99})
     return bundle, cfg, out
 
 

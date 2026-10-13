@@ -1,0 +1,56 @@
+# Simulation config for the Orbis Spain model (05_Simulation).
+# Ported from 04_Code/steady_state/config.yaml (simulation keys only). The
+# calibration settings live in 04_Estimation/config_estimation.yaml, which reads
+# the model settings below (parameters, participation, solver) from this file.
+# Relative paths resolve against this file's folder.
+
+paths:
+  bundle_dir: ../03_Empirical/02_Orbis/04_Moments/03_outdata
+  # Calibrated-parameter file written by 04_Estimation/01_calibrate.py. The
+  # scripts refuse to run if its provenance.bundle_sha256 does not match the
+  # bundle above.
+  params_file: ../04_Estimation/out_results/calibrated_params.yaml
+  out_results_dir: out_results   # gitignored
+  out_figs_dir: out_figs         # gitignored
+
+log_level: INFO
+
+monte_carlo:
+  M: 100000                # markets for 01_simulate.py (04_Code monte_carlo.M_final)
+  master_seed: 20260525
+
+welfare:
+  M: 10000                 # markets for 02_welfare.py (the M the 04_Code welfare job ran with)
+
+parameters:
+  beta: 0.96               # discount factor from EMX
+  delta_K: 0.06            # capital depreciation rate from EMX
+  phi: 1.0                 # Frisch elasticity of labor supply, for welfare U(C, L) from EMX
+  H: 2500                  # per-market slot pool (EMX Nmax); must exceed calibrated N
+                           # (kept above the N.hi=1000 ceiling; arrays are (M, H),
+                           # so H drives per-eval memory and compute. H > N.hi
+                           # leaves room for Poisson count realizations above
+                           # the calibrated mean.) The bundle's
+                           # mean_firms_per_sector (about 4,083) exceeds H; it is
+                           # a diagnostic only.
+  # phi_v (gross-output value-added weight) and a (capital share of value added)
+  # are EXTERNAL primitives read from the bundle (aggregate_moments.yaml); they
+  # are not calibrated and not set here.
+
+participation:
+  K_switch: 1              # accepted for signature compatibility; unused under exogenous entry
+  love_of_variety: off
+
+solver:
+  market:                      # inner FP: joint (s, Y_im) at given X_market, (w, R)
+    tol: 1.0e-8
+    max_iter: 3000             # EMX sectors hold hundreds of firms; converges slower
+    damping: 0.2               # gentler damping needed for large nested-CES markets
+    newton_fallback_after: 50  # iterations of damped FP before trying Newton
+    backend: vectorized        # market-solve kernel: scalar | vectorized
+                               # scalar is the oracle; vectorized is bit-exact
+                               # on real data and about 2.4x faster
+  parallel:                    # market-chunk process parallelism over the M axis
+    n_jobs: 10                 # process chunks for medium probes; avoid oversubscribing memory bandwidth
+    min_markets: 500           # keep tiny smoke/test runs serial
+    min_markets_per_job: 100   # lower bound on chunk size

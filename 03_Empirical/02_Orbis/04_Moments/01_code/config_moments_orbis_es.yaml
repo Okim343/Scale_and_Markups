@@ -1,17 +1,90 @@
 # =============================================================================
 # Orbis Spain moments bundle (model inputs), built step by step:
-#   01_build_F_alpha.py     pooled scalability distribution F(alpha) from the GNR estimates
-#   (later steps: markup moments from 03_Markups, bundle assembly, figures)
+#   01_build_F_alpha.py        pooled scalability distribution F(alpha) from the GNR estimates
+#   02_build_market_panel.py   per (year, market): counts, concentration, HHI, V-weighted markup
+#   03_pooled_targets.py       window means per market, sales-weighted pooling, firm counts
+#   04_aggregate_markup.py     aggregate cost-weighted markup mu_cw
+#   05_emx_slope.py            EMX slope (inverse markup on HHI), robustness, decomposition
+#   06_alpha_moments.py        RTS gap (rho_bar target), phi_v, GNR diagnostics
+#   07_assemble_bundle.py      03_outdata/{F_alpha.parquet, aggregate_moments.yaml, manifest.yaml}
+#   08_report.py               03_outdata/moments_report.md (Orbis vs Compustat)
+#   09_crosscheck_compustat.py the step 2/3/5 functions on the Compustat S1 file
 #
+# Every choice below is decision D1-D13 of
+# 02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MOMENTS.md (local, gitignored).
 # Outputs stay under the gitignored 01_intermediary/ and 03_outdata/ (WRDS derivatives).
 # All relative paths resolve against the project root.
 # =============================================================================
+
+pipeline_version: "0.1.0-orbis-es-moments"
 
 # --- Inputs --------------------------------------------------------------------
 gnr:
   # Final GNR estimates written by 02_GNR/01_code/02_combine_cells.py.
   outdata_dir: "03_Empirical/02_Orbis/02_GNR/03_outdata"
   id_col: bvdid
+
+input:
+  # DLEU firm-year markups (03_Markups/01_code/04_build_markups.py), with its manifest.
+  markups_dir: "03_Empirical/02_Orbis/03_Markups/03_outdata"
+  # Only used to merge naics4 onto the GNR firm-years by (bvdid, year).
+  clean_panel: "03_Empirical/02_Orbis/01_Cleaning/01_intermediary/orbis_es_clean_panel.parquet"
+
+# --- Windows (D3) ------------------------------------------------------------------
+active_window: [2015, 2019]       # pre-COVID; every bundle moment, F(alpha) included
+robustness_window: [2015, 2023]   # reported only
+
+# --- Markets (D1, D5) --------------------------------------------------------------
+markets:
+  concentration: naics4           # Orbis core NAICS 4-digit, nested in the 14 GNR/markup cells
+  emx: ind2d                      # NAICS2 cell, as Compustat 08b
+  emx_robustness: [ind2d, naics4, nace3, cnae4]
+  low_firm_threshold: 20          # low_firm_flag = n < 20 (Compustat 02_pooled_targets.py)
+
+# --- Markups ---------------------------------------------------------------------------
+# D13: Compustat S1 trims (01_load_compustat.py:163-190), applied only to the market-level
+# markups behind emx_slope: drop outside the hard bounds, then clip to the within-year
+# quantiles computed on the survivors of all markets.
+s1_markup_trim:
+  hard: [0.1, 10.0]
+  winsor_pct: [0.01, 0.99]
+
+# D4: aggregate mu_cw = (V_D + kexp)-weighted markup_wi per year (no trims), then the simple
+# mean over the active window. V = mate + staf has no SG&A split: the Spain run uses
+# markup_target: cogs.
+markup:
+  col: markup_wi
+  cost_weight: V_D + kexp
+  market_weight: V_D              # weight of mu_cw_iy in the market panel (Compustat: cogs)
+  report_years: [2016, 2019]      # 2015 thetas are imputed from the 2016 window
+
+# --- EMX slope (D5), Compustat 08b_emx_slope_moment.py ---------------------------------
+emx:
+  primary: long_difference        # active_window endpoints, one obs per market, OLS + HC1
+  ld_windows: [[2015, 2019], [2016, 2019], [2015, 2023], [2016, 2023], [2015, 2022]]
+  stacked_gaps: [4, 5]            # stacked LDs over robustness_window, with and without market FE
+  # Sales-weighted variants (finer markets only): WLS weight = mean of the market's sales
+  # at the two endpoints of each difference.
+
+# --- Alpha moments (D6, D9) on GNR step-2 firm-years ---------------------------------
+alpha_moments:
+  sample: in_step2_sample
+  alpha_col: rts                  # raw GNR returns to scale, as F(alpha)
+  # D6, the new rho_bar target (Hubmer, Chan, Ozkan, Salgado and Hong, Table II): mean
+  # demeaned RTS of the top 5% minus the bottom 50% of the within-market revenue distribution.
+  rts_gap:
+    market: naics4
+    top: 0.95
+    bottom: 0.50
+    collapse: firm_mean           # firm means of rts and r over the window, no winsorization
+    bootstrap_reps: 200
+    seed: 20261013
+    profile_bins: 20
+
+# --- Primitives -------------------------------------------------------------------------
+# D8: capital share in value added, EMX (p.alpha = 1/3, start.m:71); also the Compustat
+# pipeline's a_i_fallback. GNR kelast / (kelast + lelast) is a manifest diagnostic only.
+a: 0.3333333333
 
 # --- Pooled scalability distribution F(alpha) (step 01) -------------------------
 # One pooled distribution over all Spanish firms in every GNR cell (no sector dimension, as
@@ -20,14 +93,33 @@ gnr:
 # to counter Compustat's labor data. Values above 1 are kept.
 F_alpha:
   alpha_col: rts                # GNR returns to scale (= alpha_gross_output)
-  window: [2015, 2023]          # full Orbis estimation window
+  window: [2015, 2019]          # = active_window (D3)
   collapse: firm_mean           # firm_mean: one unit per firm (window-mean alpha); firm_year: robustness
   winsor_pct: [0.01, 0.99]      # pooled winsorization of the firm units before the quantiles
   n_nodes: 500                  # equal-mass support points at u_k = (k - 0.5) / N
   min_obs: 1000                 # hard error below this many pooled units
 
+# --- Bundle (D11, D12) -----------------------------------------------------------------
+bundle:
+  markup_target_note: cogs      # PooledInputs.from_bundle(markup_target="cogs") check
+
+# --- Compustat reference (read only) ------------------------------------------------------
+compustat:
+  intermediary_dir: "03_Empirical/01_Compustat/01_industry_alpha/01_intermediary"
+  outdata_dir: "03_Empirical/01_Compustat/01_industry_alpha/03_outdata"
+  window: [2010, 2019]
+  tolerance: 1.0e-5
+  expected:
+    cr4: 0.2034884
+    cr20: 0.4834767
+    top1pct: 0.3238653
+    top5pct: 0.6352322
+    n_firms_cs: 5211.4
+    emx_slope: -0.5096322
+
 # --- Outputs -----------------------------------------------------------------------
 output:
   intermediary_dir: "03_Empirical/02_Orbis/04_Moments/01_intermediary"
+  outdata_dir: "03_Empirical/02_Orbis/04_Moments/03_outdata"
 
 log_level: INFO

@@ -130,6 +130,16 @@ XX_mdfiles/*
 
 # Private university-server configuration and scripts (local only).
 /04_Code/marvin2/
+/04_Estimation/cluster/
+/05_Simulation/cluster/
+
+# Orbis model outputs and cluster logs (already covered by the out*result* and
+# out_figs patterns above; explicit so a rename cannot leak model output).
+/04_Estimation/out_results/
+/04_Estimation/logs/
+/05_Simulation/out_results/
+/05_Simulation/out_figs/
+/05_Simulation/logs/
 02_Drafts/figures/anchor_fig.typ
 
 # Orbis (WRDS-licensed, never commit). The repo-wide *indata*/ and *intermediary*/ rules

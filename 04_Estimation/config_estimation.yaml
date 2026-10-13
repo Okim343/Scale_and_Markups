@@ -1,0 +1,66 @@
+# Calibration config for the Orbis Spain model (04_Estimation).
+# Ported from the calibration keys of 04_Code/steady_state/config.yaml. The
+# model settings (beta, delta_K, H, participation, market solver) come from the
+# simulation config below, so the calibration and the simulation solve the
+# same model. Relative paths resolve against this file's folder.
+
+paths:
+  bundle_dir: ../03_Empirical/02_Orbis/04_Moments/03_outdata   # must equal the simulation config's
+  simulation_config: ../05_Simulation/config_simulation.yaml
+  out_results_dir: out_results   # gitignored; 01_calibrate.py writes calibrated_params.yaml here
+
+log_level: INFO
+
+monte_carlo:
+  M: 10000                 # markets per objective evaluation (the cluster job passes --M 5000)
+  seed: 20260525           # common random numbers, fixed across evaluations
+
+# Targeted moments and residual weights. A moment is in the objective iff it is
+# listed here; weight 0 keeps it computed and reported in fit.moments.
+#   Source: the 04_Code weights (EMX 2022 Cournot weighting). EMX weight the
+#   aggregate markup far above concentration (squared-error weights markup=100,
+#   slope=10, CR4=CR20=1); our solver multiplies the RESIDUAL (least_squares
+#   squares it), so the weights are the square roots: mu_cw=10,
+#   emx_slope=sqrt(10)=3.162, cr4=cr20=1. top1pct/top5pct are not used by EMX
+#   (weight 0). alpha_rts_gap_top5_bottom50 inherits the weight 3.162 of the
+#   alpha-sorting moment it replaces (04_Code corr_alpha_log_sales).
+#   Residuals are (model - target) / (1 + |target|), EMX objective.m:183.
+weights:
+  mu_cw: 10.0
+  cr4: 1.0
+  cr20: 1.0
+  top1pct: 0.0
+  top5pct: 0.0
+  emx_slope: 3.162
+  alpha_rts_gap_top5_bottom50: 3.162
+
+bounds:
+  xi: {lo: 1.05, hi: 60.0}       # Pareto tail index of capability v (04_Code)
+  N: {lo: 5.0, hi: 1000.0}       # Poisson mean firms per market (04_Code); needs H > hi.
+                                 # The bundle's mean_firms_per_sector (about 4,083,
+                                 # NAICS4) exceeds hi: N may hit this bound.
+  eta: {lo: 1.01, hi: 10.0}      # 04_Code: lo from config.yaml, hi hard-coded in cmd_calibrate
+  gamma_gap: {lo: 0.01, hi: 30.0}  # gamma - eta (04_Code calibrate_pooled default)
+  rho_bar: {lo: -0.95, hi: 0.95}   # alpha-v copula strength; negative allowed
+                                   # (Salgado et al. calibrate rho_{z,eta} = -0.25)
+
+initial_values:
+  # Warm start. xi, gamma and eta are the Compustat calibration
+  # 04_Code/out_results/calib_pooled/calibration_pooled.yaml (the file 04_Code's
+  # calibrate warm-started from); it was fit to the Compustat bundle, not Orbis.
+  # N is the 04_Code warm start 149.586 (04_Code config.yaml initial_values),
+  # never the bundle's mean_firms_per_sector.
+  xi: 16.79952770071769
+  N: 149.586
+  gamma: 7.2523276893392135
+  eta: 1.5443566604708288
+  rho_bar: 0.0   # no bundle warm start any more; the Compustat warm start 0.6
+                 # was tuned to the dropped corr(alpha, log sales) target.
+
+inner:                     # scipy least_squares, method trf (fixed)
+  ftol: 1.0e-4             # 04_Code calibrate_pooled defaults (its config's inner.tol
+  xtol: 1.0e-4             # 1e-5 was never read)
+  max_nfev: 40             # override per run with 01_calibrate.py --max-nfev
+
+entry:
+  varphi: 0.04             # exogenous exit rate for the post-calibration sunk entry cost (EMX)

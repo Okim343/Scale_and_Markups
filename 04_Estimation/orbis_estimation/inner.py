@@ -121,6 +121,20 @@ def _anchor_checkpoint_diag(eq: PooledEquilibrium) -> dict[str, float]:
         }
 
 
+def _checkpoint_moments(model: Mapping[str, object]) -> dict[str, float | None]:
+    """Scalar entries of a model-moment dict as JSON-safe floats (NaN as null)."""
+    out: dict[str, float | None] = {}
+    for key, value in model.items():
+        if np.ndim(value) != 0:
+            continue
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            continue
+        out[str(key)] = number if np.isfinite(number) else None
+    return out
+
+
 def _encode(
     values: Sequence[float],
     *,
@@ -168,6 +182,7 @@ def calibrate_pooled(
     ftol: float = 1e-4,
     xtol: float = 1e-4,
     max_nfev: int = 40,
+    fd_step: float = 1e-2,
     checkpoint_path: str | Path | None = None,
 ) -> PooledCalibrationResult:
     """Fit the anchored five-parameter vector jointly.
@@ -175,7 +190,9 @@ def calibrate_pooled(
     ``initial`` is ``(xi, N, gamma, eta, rho_bar)``. Residuals are
     :func:`objective.weighted_relative_residuals` over ``moment_keys``. Every
     evaluation caps alpha at ``alpha_cap_factor * gamma/(gamma-1)`` at its own
-    ``gamma`` (``None`` samples the raw support).
+    ``gamma`` (``None`` samples the raw support). The Jacobian is a forward
+    difference with absolute step ``fd_step`` in the transformed coordinates
+    (log xi, log N, log(eta-1), log(gamma-eta), logit rho_bar).
     """
     x0 = _encode(initial, rho_bar_bounds=rho_bar_bounds)
     ckpt = Path(checkpoint_path) if checkpoint_path is not None else None
@@ -225,19 +242,45 @@ def calibrate_pooled(
                 "gamma": params.gamma, "eta": params.eta,
                 "rho_bar": params.rho_bar,
                 "cost": 0.5 * float(arr @ arr),
+                "ge_converged": bool(eq.converged),
+                "ge_residual": float(eq.residual),
+                # Every scalar model moment (targeted or not), so a mid-run
+                # check can read the fit per moment without waiting for the end.
+                "moments": _checkpoint_moments(model),
             }
             record.update(_anchor_checkpoint_diag(eq))
             with ckpt.open("a") as fh:  # append + flush-on-close so a kill keeps it
                 fh.write(json.dumps(record) + "\n")
+        _last[0] = (np.array(x, dtype=float), arr)
         return arr
+
+    _last: list[tuple[np.ndarray, np.ndarray] | None] = [None]
+
+    def jacobian(x: np.ndarray) -> np.ndarray:
+        # Forward differences with the same ABSOLUTE step in every transformed
+        # coordinate. SciPy's diff_step is relative to |x|, so eta (x = log(eta-1)
+        # near 0 at eta near 2) and rho_bar (logit near 0 at rho_bar near 0) got
+        # steps of 4e-5 and 1e-7 to 1e-8, below the anchored GE tolerance: their
+        # columns were noise and trf kept rejecting steps built on them.
+        x = np.asarray(x, dtype=float)
+        if _last[0] is not None and np.array_equal(_last[0][0], x):
+            f0 = _last[0][1]  # trf evaluates fun(x) before jac(x); reuse it
+        else:
+            f0 = residual(x)
+        jac = np.empty((f0.size, x.size))
+        for j in range(x.size):
+            h = fd_step if x[j] + fd_step <= upper[j] else -fd_step
+            xj = x.copy()
+            xj[j] += h
+            jac[:, j] = (residual(xj) - f0) / h
+        return jac
 
     # verbose=2 streams the per-iteration cost/step to stdout so a long
     # Marvin2 run is observable via `tail -f` (paired with unbuffered output in
     # cluster/submit_calibrate.sh). SciPy otherwise runs the fit silently.
     sol = least_squares(
-        residual, x0=x0, bounds=(lower, upper), method="trf",
-        ftol=ftol, xtol=xtol, gtol=1e-8, max_nfev=max_nfev,
-        diff_step=1e-3, verbose=2,
+        residual, x0=x0, jac=jacobian, bounds=(lower, upper), method="trf",
+        ftol=ftol, xtol=xtol, gtol=1e-8, max_nfev=max_nfev, verbose=2,
     )
     params = _decode(
         sol.x, a=primitives.a, H=primitives.H, phi_v=primitives.phi_v,

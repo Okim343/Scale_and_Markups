@@ -6,6 +6,7 @@ Ported from the calibrate/validate parts of ``04_Code/tests/test_simulation_cli.
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -109,6 +110,10 @@ def test_calibrate_writes_params_with_provenance_and_validate_reads_it(tmp_path)
     for name in ("calibrated_params.yaml", "calibration_manifest.yaml",
                  "calibration_fit_2015_2019.csv", "calibration_checkpoint.jsonl"):
         assert (out / name).exists(), name
+    rows = [json.loads(line) for line in
+            (out / "calibration_checkpoint.jsonl").read_text().splitlines()]
+    assert rows and all(set(WEIGHTS) <= set(row["moments"]) for row in rows)
+    assert all(isinstance(row["ge_converged"], bool) for row in rows)
     data = yaml.safe_load(params_path.read_text())
     bundle = tmp_path / "bundle"
     assert data["provenance"]["bundle_sha256"] == bundle_hashes(bundle)

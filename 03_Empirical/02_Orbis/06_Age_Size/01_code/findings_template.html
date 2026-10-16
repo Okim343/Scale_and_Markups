@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en" class="theme-light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Age, Size and Outsourcing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script>Chart.defaults.animation = false;</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html.theme-light {
+      --bg: #FBFAF7; --surface: #FFFFFF; --surface-hover: #F3F2EE;
+      --border: rgba(30,30,40,0.10); --border-strong: rgba(30,30,40,0.28);
+      --text: #1d2330; --text-secondary: #6b7280;
+      --accent: #46607e; --accent-secondary: #9a7a42;
+      --positive: #4f7a70; --negative: #9a5b5b; --warning: #a07d3e;
+      --muted: #9aa0a8; --grid: rgba(30,30,40,0.07);
+      --heat-neg: 70,96,126; --heat-pos: 154,122,66;
+    }
+    html.theme-dark {
+      --bg: #14161a; --surface: #1b1e23; --surface-hover: #23272d;
+      --border: rgba(255,255,255,0.09); --border-strong: rgba(255,255,255,0.28);
+      --text: #e6e6e3; --text-secondary: #9aa0a8;
+      --accent: #8fa7c4; --accent-secondary: #d0b07a;
+      --positive: #8fbcb1; --negative: #cf8f8f; --warning: #d0b07a;
+      --muted: #6e747c; --grid: rgba(255,255,255,0.07);
+      --heat-neg: 143,167,196; --heat-pos: 208,176,122;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; -webkit-font-smoothing: antialiased; font-size: 1rem;
+      transition: background 0.3s, color 0.3s;
+    }
+    h1, h2, h3 { color: var(--text); text-wrap: balance; }
+    h1 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; font-size: 2.5rem; letter-spacing: -0.015em; line-height: 1.15; }
+    h2 { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+    h3 { font-size: 0.95rem; font-weight: 500; }
+    p, li, span { color: inherit; }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeInUp 0.6s ease-out both; }
+    .animate.delay-1 { animation-delay: 0.1s; }
+    .animate.delay-2 { animation-delay: 0.2s; }
+    .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+
+    .viz-menu { position: fixed; top: 16px; right: 16px; z-index: 9999; }
+    .viz-menu-toggle { width: 40px; height: 40px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .viz-menu-toggle:hover { background: var(--surface-hover); }
+    .viz-menu-dropdown { position: absolute; top: 48px; right: 0; min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2s; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    .viz-menu-dropdown.open { opacity: 1; visibility: visible; transform: translateY(0); }
+    .viz-menu-dropdown button { width: 100%; padding: 9px 12px; border: none; border-radius: 7px; background: transparent; color: var(--text); font-size: 14px; font-family: inherit; cursor: pointer; text-align: left; }
+    .viz-menu-dropdown button:hover { background: var(--surface-hover); }
+    .skip-to-content { position: absolute; top: -40px; left: 6px; background: var(--accent); color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; z-index: 10000; }
+    .skip-to-content:focus { top: 6px; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 56px 32px 48px; }
+    .head { margin-bottom: 48px; max-width: 900px; }
+    .head .kicker { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 10px; }
+    .head .sub { margin-top: 14px; color: var(--text-secondary); font-size: 1rem; }
+    .head .sub b { color: var(--text); font-weight: 500; }
+
+    .figure { margin-bottom: 56px; padding-top: 40px; border-top: 1px solid var(--border-strong); }
+    .fig-num { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
+    .fig-title { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; font-size: 1.6rem; letter-spacing: -0.01em; line-height: 1.25; text-transform: none; color: var(--text); margin-bottom: 8px; }
+    .fig-lead { font-size: 0.92rem; color: var(--text-secondary); max-width: 880px; margin-bottom: 22px; }
+    .fig-lead b { color: var(--text); font-weight: 500; }
+
+    .panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+    .panels.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .panel h3 { margin-bottom: 2px; }
+    .panel .pnote { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 8px; }
+    .chart-container { position: relative; height: 300px; }
+    .chart-container.tall { height: 470px; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: center; font-size: 0.85rem; color: var(--text-secondary); padding: 12px 0; margin-top: 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .legend span { display: inline-flex; align-items: center; gap: 8px; }
+    .reading { font-size: 0.92rem; margin-top: 14px; max-width: 900px; line-height: 1.6; }
+    .reading em { font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-size: 1.02rem; }
+
+    /* table */
+    .tbl-wrap { overflow-x: auto; }
+    table.res { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.9rem; }
+    table.res th { text-align: left; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); padding: 8px 12px; border-bottom: 1px solid var(--border-strong); vertical-align: bottom; }
+    table.res td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    table.res tr:last-child td { border-bottom: 1px solid var(--border-strong); }
+    table.res td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table.res td.claim { font-family: 'Source Serif 4', Georgia, serif; font-size: 1rem; }
+    table.res .sub { display: block; font-size: 0.8rem; color: var(--text-secondary); }
+    .v { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+    .v.yes { color: var(--positive); }
+    .v.no { color: var(--negative); }
+    .v.part { color: var(--warning); }
+
+    /* heatmap */
+    .heat { display: grid; grid-template-columns: 64px repeat(10, minmax(0, 1fr)); gap: 2px; font-variant-numeric: tabular-nums; }
+    .heat .hd { font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 2px 0; }
+    .heat .rl { font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; white-space: nowrap; }
+    .heat .cell { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--text); border-radius: 2px; cursor: default; }
+    .heat .cell:hover, .heat .cell:focus { outline: 1px solid var(--text); outline-offset: -1px; }
+    .axis-note { font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; text-align: center; }
+    .heat-scale { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.75rem; color: var(--text-secondary); }
+    .heat-scale .bar { height: 8px; width: 160px; border-radius: 1px; }
+    .heat-tip { position: fixed; pointer-events: none; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; padding: 8px 10px; font-size: 0.8rem; box-shadow: 0 6px 18px rgba(0,0,0,0.10); opacity: 0; transition: opacity 0.1s; z-index: 50; max-width: 260px; color: var(--text); }
+
+    .foot { margin-top: 8px; padding-top: 32px; border-top: 1px solid var(--border-strong); }
+    .note-label { font-size: 0.8rem; font-weight: 600; margin-bottom: 12px; }
+    .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px 40px; font-size: 0.875rem; line-height: 1.55; color: var(--text-secondary); }
+    .notes h2 { margin-bottom: 6px; }
+    .notes p + p { margin-top: 6px; }
+    .notes strong { color: var(--text); font-weight: 500; }
+    .notes code, .source code { font-size: 0.85em; }
+    .source { margin-top: 28px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.55; }
+
+    @media print {
+      body { background: white !important; color: black !important; }
+      .viz-menu { display: none !important; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+      .figure { break-inside: avoid; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+    @page { margin: 0.6in; }
+    @media (max-width: 900px) { .panels, .panels.two { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .wrap { padding: 40px 16px; } h1 { font-size: 2rem; } .fig-title { font-size: 1.35rem; }
+      .heat { grid-template-columns: 44px repeat(10, minmax(0, 1fr)); }
+      .heat .cell { height: 34px; font-size: 0.6rem; }
+    }
+    @media (max-width: 375px) { body { overflow-x: hidden; } .heat .cell span { display: none; } }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-to-content">Skip to content</a>
+
+  <div class="viz-menu">
+    <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg>
+    </button>
+    <div class="viz-menu-dropdown" id="vizMenuDropdown">
+      <button onclick="cycleTheme()"><span id="themeLabel">Dark theme</span></button>
+      <button onclick="downloadImage()"><span>Download PNG</span></button>
+      <button onclick="window.print()"><span>Print / PDF</span></button>
+    </div>
+  </div>
+
+  <main id="main-content" role="main" class="wrap">
+
+    <section class="head animate" aria-labelledby="title">
+      <p class="kicker">Orbis Spain &middot; firm-level evidence &middot; 2015&ndash;2023</p>
+      <h1 id="title">Firm age, firm size, capital intensity and outsourcing</h1>
+      <p class="sub">The hypothesis under test: <b>young firms hold more capital and produce more in-house</b>, while <b>larger and older firms outsource more and hold less capital</b>. Firm age is measured from incorporation dates. All comparisons are within 4-digit NAICS industry and year. The size half of the hypothesis is supported; the age half is not, once firms of the same size are compared. Figures 5 to 7 extend the comparison to the full cost structure and to labour.</p>
+    </section>
+
+    <!-- TABLE 1 -->
+    <section class="figure animate delay-1" aria-labelledby="t1">
+      <p class="fig-num">Table 1</p>
+      <h2 id="t1" class="fig-title">Summary of results</h2>
+      <p class="fig-lead">Gaps are differences in means within 4-digit industry &times; year cells. Capital gaps are converted from log differences to percent. <b>N</b> = <span id="nObs"></span> firm-years, <span id="nFirms"></span> firms.</p>
+      <div class="tbl-wrap">
+        <table class="res">
+          <thead><tr><th style="width:30%">Claim</th><th>Comparison</th><th>Estimate</th><th>Also holding fixed</th><th>Assessment</th></tr></thead>
+          <tbody>
+            <tr><td class="claim">Larger firms outsource more</td><td>Materials share of sales, top vs bottom revenue decile</td><td class="num" id="r1"></td><td>Age group</td><td><span class="v yes">Supported</span></td></tr>
+            <tr><td class="claim">Larger firms hold less capital</td><td>Capital per euro of sales, top vs bottom decile<span class="sub">Capital per worker: <span id="r2b"></span></span></td><td class="num" id="r2"></td><td>Age group</td><td><span class="v yes">Supported, per euro of sales</span></td></tr>
+            <tr><td class="claim">Young firms hold more capital</td><td>Capital per euro of sales, age 0 vs age 30+<span class="sub">Capital per worker: <span id="r3b"></span></span></td><td class="num" id="r3"></td><td>Revenue decile</td><td><span class="v no">Not supported (opposite sign)</span></td></tr>
+            <tr><td class="claim">Young firms produce more in-house</td><td>Materials share of sales, age 0 vs age 30+<span class="sub">Without the size control: <span id="r4b"></span></span></td><td class="num" id="r4"></td><td>Revenue decile</td><td><span class="v part">Only through size</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FIGURE 1 -->
+    <section class="figure" data-reveal aria-labelledby="f1">
+      <p class="fig-num">Figure 1</p>
+      <h2 id="f1" class="fig-title">Age profiles of input structure</h2>
+      <p class="fig-lead">Mean gap to firms aged 30 and over, by years since incorporation. The <b>solid line</b> compares firms in the same 4-digit industry, year and revenue decile; the <b>dashed line</b> holds only industry and year fixed.</p>
+      <div class="panels">
+        <div class="panel"><h3>(a) Materials share of sales</h3><p class="pnote">percentage points</p><div class="chart-container"><canvas id="a_m" role="img" aria-label="Materials share of sales by firm age, relative to age 30 and over"></canvas></div></div>
+        <div class="panel"><h3>(b) Capital per euro of sales</h3><p class="pnote">percent</p><div class="chart-container"><canvas id="a_k" role="img" aria-label="Capital per euro of sales by firm age, relative to age 30 and over"></canvas></div></div>
+        <div class="panel"><h3>(c) Capital per worker</h3><p class="pnote">percent</p><div class="chart-container"><canvas id="a_e" role="img" aria-label="Capital per worker by firm age, relative to age 30 and over"></canvas></div></div>
+      </div>
+      <div class="legend">
+        <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="var(--accent)" stroke-width="2"/></svg>Same industry, year and revenue decile</span>
+        <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>Same industry and year only</span>
+        <span>Age 30+ pools all older firms</span>
+      </div>
+      <p class="reading">At a given size, newly incorporated firms hold markedly less capital, per euro of sales and per worker, and the gap closes gradually over the first two decades. They also buy in a slightly larger share of their inputs. Without the size control the materials-share gap changes sign: <em>young firms appear more vertically integrated only because they are small.</em></p>
+    </section>
+
+    <!-- FIGURE 2 -->
+    <section class="figure" data-reveal aria-labelledby="f2">
+      <p class="fig-num">Figure 2</p>
+      <h2 id="f2" class="fig-title">Size profiles of input structure</h2>
+      <p class="fig-lead">Mean gap to the smallest revenue decile (D1), deciles defined within 4-digit industry &times; year. The <b>solid line</b> also holds the age group fixed (0&ndash;2, 3&ndash;5, 6&ndash;10, 11&ndash;20, 21+).</p>
+      <div class="panels">
+        <div class="panel"><h3>(a) Materials share of sales</h3><p class="pnote">percentage points</p><div class="chart-container"><canvas id="s_m" role="img" aria-label="Materials share of sales by revenue decile, relative to the smallest decile"></canvas></div></div>
+        <div class="panel"><h3>(b) Capital per euro of sales</h3><p class="pnote">percent</p><div class="chart-container"><canvas id="s_k" role="img" aria-label="Capital per euro of sales by revenue decile, relative to the smallest decile"></canvas></div></div>
+        <div class="panel"><h3>(c) Capital per worker</h3><p class="pnote">percent</p><div class="chart-container"><canvas id="s_e" role="img" aria-label="Capital per worker by revenue decile, relative to the smallest decile"></canvas></div></div>
+      </div>
+      <div class="legend">
+        <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="var(--accent-secondary)" stroke-width="2"/></svg>Same industry, year and age group</span>
+        <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>Same industry and year only</span>
+      </div>
+      <p class="reading">The materials share rises monotonically with size, and capital per euro of sales falls. Per worker, larger firms hold <em>more</em> capital, so the size result concerns capital relative to output rather than capital deepening. Holding age fixed leaves the profiles almost unchanged.</p>
+    </section>
+
+    <!-- FIGURE 3 -->
+    <section class="figure" data-reveal aria-labelledby="f3">
+      <p class="fig-num">Figure 3</p>
+      <h2 id="f3" class="fig-title">Joint variation by age group and size decile</h2>
+      <p class="fig-lead">Each cell is the mean deviation from the 4-digit industry &times; year mean. Rows are age groups; columns are revenue deciles within industry &times; year.</p>
+      <div class="panels two">
+        <div class="panel"><h3>(a) Materials share of sales</h3><p class="pnote">percentage points</p><div class="heat" id="heat_m" role="img" aria-label="Heatmap of materials share by age group and revenue decile"></div><div class="axis-note">Revenue decile &rarr;</div><div class="heat-scale" id="scale_m"></div></div>
+        <div class="panel"><h3>(b) Capital per euro of sales</h3><p class="pnote">percent</p><div class="heat" id="heat_k" role="img" aria-label="Heatmap of capital per euro of sales by age group and revenue decile"></div><div class="axis-note">Revenue decile &rarr;</div><div class="heat-scale" id="scale_k"></div></div>
+      </div>
+      <p class="reading">The materials share varies almost entirely across columns, that is, with size. Capital per euro of sales varies along both dimensions: it falls with size and rises with age, so young, large firms are the least capital-intensive group.</p>
+    </section>
+
+    <!-- FIGURE 4 -->
+    <section class="figure" data-reveal aria-labelledby="f4">
+      <p class="fig-num">Figure 4</p>
+      <h2 id="f4" class="fig-title">Age and size gaps by sector</h2>
+      <p class="fig-lead"><b>Age gap</b>: firms aged 0&ndash;2 minus firms aged 21+, within 4-digit industry, year and revenue decile. <b>Size gap</b>: top minus bottom revenue decile, within 4-digit industry, year and age group. Sectors sorted by number of firm-years.</p>
+      <div class="panels two">
+        <div class="panel"><h3>(a) Materials share of sales</h3><p class="pnote">percentage points</p><div class="chart-container tall"><canvas id="sec_m" role="img" aria-label="Age and size gaps in the materials share, by sector"></canvas></div></div>
+        <div class="panel"><h3>(b) Capital per euro of sales</h3><p class="pnote">percent</p><div class="chart-container tall"><canvas id="sec_k" role="img" aria-label="Age and size gaps in capital per euro of sales, by sector"></canvas></div></div>
+      </div>
+      <div class="legend">
+        <span><svg width="14" height="10"><rect width="14" height="10" fill="var(--accent)"/></svg>Age gap (0&ndash;2 vs 21+)</span>
+        <span><svg width="14" height="10"><rect width="14" height="10" fill="var(--accent-secondary)"/></svg>Size gap (D10 vs D1)</span>
+      </div>
+      <p class="reading">The capital result holds in every sector: young firms and large firms both hold less capital per euro of sales. The age gap in the materials share is positive in 13 of 14 sectors (agriculture is the exception) and small next to the size gap, which is positive everywhere except accommodation and food.</p>
+    </section>
+
+    <!-- TABLE 2 -->
+    <section class="figure" data-reveal aria-labelledby="t2">
+      <p class="fig-num">Table 2</p>
+      <h2 id="t2" class="fig-title">Cost structure and labour: summary of gaps</h2>
+      <p class="fig-lead">Cost shares are shares of operating revenue; share rows compare age groups 0&ndash;2 and 21+, per-worker rows compare age 0 and 30+. <b>N</b> = <span id="nObs2"></span> firm-years, <span id="nFirms2"></span> firms (nature-of-expense accounts with reported depreciation).</p>
+      <div class="tbl-wrap">
+        <table class="res">
+          <thead><tr><th style="width:34%">Measure</th><th>Young vs old<span class="sub" style="text-transform:none;letter-spacing:0;font-weight:400">same industry, year, size decile</span></th><th>Large vs small (D10 vs D1)<span class="sub" style="text-transform:none;letter-spacing:0;font-weight:400">same industry, year, age group</span></th></tr></thead>
+          <tbody id="t2body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FIGURE 5 -->
+    <section class="figure" data-reveal aria-labelledby="f5">
+      <p class="fig-num">Figure 5</p>
+      <h2 id="f5" class="fig-title">Where a euro of sales goes</h2>
+      <p class="fig-lead">Mean shares of operating revenue. Panel (a) holds the revenue decile fixed and panel (b) the age group fixed, both within 4-digit industry &times; year; levels are those deviations plus the sample mean, so each bar sums to one. Warm colours are bought-in inputs, cool colours are costs incurred in-house.</p>
+      <div class="panels two">
+        <div class="panel"><h3>(a) By age group</h3><p class="pnote">share of operating revenue</p><div class="chart-container"><canvas id="c_age" role="img" aria-label="Stacked bars of materials, other external costs, wages, depreciation and operating profit as shares of sales, by age group"></canvas></div></div>
+        <div class="panel"><h3>(b) By revenue decile</h3><p class="pnote">share of operating revenue</p><div class="chart-container"><canvas id="c_size" role="img" aria-label="Stacked bars of materials, other external costs, wages, depreciation and operating profit as shares of sales, by revenue decile"></canvas></div></div>
+      </div>
+      <div class="legend" id="compLegend"></div>
+      <p class="reading">With age, spending shifts from bought-in inputs to the wage bill: at a given size, firms aged 0&ndash;2 spend about 4 points more of each euro of sales on materials and other external costs than firms aged 21+, and about 3 points less on wages. Young firms are therefore not labour-intensive either; <em>they buy in more of everything.</em> Across size the picture is different: the materials share rises by about 20 points from the smallest to the largest decile, but other external costs (services, rents, utilities) fall by about 15 points and the wage share by 14, so large firms shift spending from services and labour towards materials.</p>
+    </section>
+
+    <!-- FIGURE 6 -->
+    <section class="figure" data-reveal aria-labelledby="f6">
+      <p class="fig-num">Figure 6</p>
+      <h2 id="f6" class="fig-title">Labour by firm age</h2>
+      <p class="fig-lead">Mean gap to firms aged 30 and over. Solid line: same 4-digit industry, year and revenue decile. Dashed line: same industry and year only. Money values in 2019 euros.</p>
+      <div class="panels">
+        <div class="panel"><h3>(a) Wage per worker</h3><p class="pnote">percent</p><div class="chart-container"><canvas id="l_a_w" role="img" aria-label="Wage bill per employee by firm age"></canvas></div></div>
+        <div class="panel"><h3>(b) Value added per worker</h3><p class="pnote">percent</p><div class="chart-container"><canvas id="l_a_v" role="img" aria-label="Operating value added per employee by firm age"></canvas></div></div>
+        <div class="panel"><h3>(c) Labour share of value added</h3><p class="pnote">percentage points</p><div class="chart-container"><canvas id="l_a_s" role="img" aria-label="Wage bill over operating value added by firm age"></canvas></div></div>
+      </div>
+      <div class="legend">
+        <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="var(--accent)" stroke-width="2"/></svg>Same industry, year and revenue decile</span>
+        <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>Same industry and year only</span>
+      </div>
+      <p class="reading">At a given size, newly incorporated firms pay about 9% less per worker but produce about the same value added per worker, so their labour share of value added is about 5 points lower. Without the size control both wages and value added per worker are about a quarter lower, because young firms are small.</p>
+    </section>
+
+    <!-- FIGURE 7 -->
+    <section class="figure" data-reveal aria-labelledby="f7">
+      <p class="fig-num">Figure 7</p>
+      <h2 id="f7" class="fig-title">Labour by firm size</h2>
+      <p class="fig-lead">Mean gap to the smallest revenue decile (D1). Solid line: same 4-digit industry, year and age group. Dashed line: same industry and year only.</p>
+      <div class="panels">
+        <div class="panel"><h3>(a) Wage per worker</h3><p class="pnote">percent</p><div class="chart-container"><canvas id="l_s_w" role="img" aria-label="Wage bill per employee by revenue decile"></canvas></div></div>
+        <div class="panel"><h3>(b) Value added per worker</h3><p class="pnote">percent</p><div class="chart-container"><canvas id="l_s_v" role="img" aria-label="Operating value added per employee by revenue decile"></canvas></div></div>
+        <div class="panel"><h3>(c) Labour share of value added</h3><p class="pnote">percentage points</p><div class="chart-container"><canvas id="l_s_s" role="img" aria-label="Wage bill over operating value added by revenue decile"></canvas></div></div>
+      </div>
+      <div class="legend">
+        <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="var(--accent-secondary)" stroke-width="2"/></svg>Same industry, year and age group</span>
+        <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>Same industry and year only</span>
+      </div>
+      <p class="reading">Wages and value added per worker both rise steeply with size, value added faster, so the labour share of value added falls by about 8 points from D1 to D10. Part of the very low pay per head in the smallest decile may reflect part-time and owner-run firms, which the wage bill per employee does not separate.</p>
+    </section>
+
+    <section class="foot" data-reveal aria-label="Notes and sources">
+      <p class="note-label">Note:</p>
+      <div class="notes">
+        <div>
+          <h2>Measures</h2>
+          <p><strong>Materials share</strong>: materials and purchased inputs over sales. In Spanish accounts this line (<em>aprovisionamientos</em>) includes subcontracted work, so a higher share means more of the product is bought rather than made. <strong>Capital</strong>: book tangible fixed assets. <strong>Age</strong>: closing year minus year of incorporation.</p>
+          <p><strong>Cost split</strong> (Figures 5 to 7): other external costs are Orbis other operating expenses net of staff costs and depreciation; operating value added is operating revenue minus materials and other external costs, so revenue = materials + other external costs + wages + depreciation + operating profit. Orbis's own added value is not used, because it is built from net profit and so includes financial items. <strong>Wage per worker</strong>: staff costs per employee, which include employer social contributions.</p>
+        </div>
+        <div>
+          <h2>Sample and estimation</h2>
+          <p>Unconsolidated accounts, 2015&ndash;2023, the 14 NAICS sectors retained for production-function estimation, with positive sales, materials, wage bill and capital and a materials share in [0, 1]. A regression of each outcome on age groups and revenue deciles with industry &times; year fixed effects and firm-clustered errors gives the same signs; all age coefficients are many standard errors from zero. Within firms born since 2010, doubling sales raises the materials share by about 1.4pp and lowers capital per euro of sales by about 33%.</p>
+          <p>Figures 5 to 7 use nature-of-expense accounts (cost of sales equal to materials, 88% of firm-years), drop firm-years without reported depreciation (10%), and trim the 1% tails of the operating-profit share.</p>
+        </div>
+        <div>
+          <h2>Caveats</h2>
+          <p><strong>Book values</strong> understate old firms' capital (historical cost, net of depreciation), which biases the age gap towards zero. <strong>Leasing</strong>: under Spanish GAAP operating leases are off balance sheet, so young firms that rent premises and equipment show low measured capital. <strong>Selection</strong>: old firms are the survivors of their cohorts, so the age profile mixes ageing with exit.</p>
+          <p><strong>Missing depreciation.</strong> Setting it to zero instead of dropping those firm-years (<span id="nZero"></span> firm-years) moves every age gap in Figures 5 and 6 by less than 0.3 points or 1%. Size gradients keep their sign and steepen slightly, because the added firms are mostly very small: the D10 wage premium is +143% instead of +129%.</p>
+        </div>
+      </div>
+      <p class="source"><strong style="color:var(--text);font-weight:500">Source:</strong> Orbis (Bureau van Dijk) via WRDS, Spanish unconsolidated accounts; incorporation dates from <code>bvd.ob_legal_info</code>; other operating expenses, depreciation and operating P/L from <code>bvd.ob_ind_g_fins</code>. Cleaning follows Hubmer et al. (2025, App. C). Analysis scripts in <code>03_Empirical/02_Orbis/06_Age_Size/</code>.</p>
+    </section>
+  </main>
+
+  <div class="heat-tip" id="heatTip" role="tooltip"></div>
+
+  <script>
+    var DATA = __DATA__;
+    var LAB = __LAB__;
+
+    function toggleMenu() { var d = document.getElementById('vizMenuDropdown'); if (d) d.classList.toggle('open'); }
+    document.addEventListener('click', function(e) { if (!e.target.closest('.viz-menu')) { var d = document.getElementById('vizMenuDropdown'); if (d) d.classList.remove('open'); } });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { var d = document.getElementById('vizMenuDropdown'); if (d) d.classList.remove('open'); } });
+
+    var savedTheme = null;
+    try { savedTheme = localStorage.getItem('viz-theme'); } catch (e) {}
+    var currentTheme = savedTheme || 'light';
+    function applyTheme(t) {
+      document.documentElement.className = 'theme-' + t;
+      document.getElementById('themeLabel').textContent = t === 'dark' ? 'Light theme' : 'Dark theme';
+      try { localStorage.setItem('viz-theme', t); } catch (e) {}
+      currentTheme = t;
+      if (typeof onThemeChange === 'function') onThemeChange();
+    }
+    function cycleTheme() { applyTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
+
+    document.querySelectorAll('[data-reveal]').forEach(function(el) { el.classList.add('reveal'); });
+    var revealObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
+    }, { threshold: 0.05 });
+    document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
+
+    async function downloadImage() {
+      var menu = document.querySelector('.viz-menu'); menu.style.display = 'none';
+      try {
+        var url = await htmlToImage.toPng(document.body, { pixelRatio: 2, backgroundColor: getComputedStyle(document.body).backgroundColor });
+        var a = document.createElement('a'); a.href = url; a.download = 'orbis-age-size-input-structure.png'; a.click();
+      } catch (e) { console.error('Download failed:', e); }
+      menu.style.display = '';
+    }
+
+    // ===== helpers =====
+    var PP = function(v) { return v * 100; };
+    var PCT = function(v) { return (Math.exp(v) - 1) * 100; };
+    function fmt(v, unit, dp) { var s = (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(dp == null ? 1 : dp); return s + (unit === 'pp' ? 'pp' : '%'); }
+    function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+    var FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    var SECTOR = { '11': 'Agriculture', '21': 'Mining', '22': 'Utilities', '23': 'Construction', '31-33': 'Manufacturing',
+      '42': 'Wholesale trade', '44-45': 'Retail trade', '48-49': 'Transportation', '51': 'Information', '54': 'Professional services',
+      '56': 'Administrative services', '61': 'Education', '71': 'Arts and recreation', '72': 'Accommodation and food' };
+
+    // ===== Table 1 =====
+    (function() {
+      var a = DATA.age, s = DATA.size;
+      document.getElementById('nObs').textContent = DATA.N.toLocaleString('en-US');
+      document.getElementById('nFirms').textContent = DATA.firms.toLocaleString('en-US');
+      document.getElementById('r1').textContent = fmt(PP(s.m_share.cond[9]), 'pp');
+      document.getElementById('r2').textContent = fmt(PCT(s.k_rev.cond[9]), '%', 0);
+      document.getElementById('r2b').textContent = fmt(PCT(s.k_emp.cond[9]), '%', 0);
+      document.getElementById('r3').textContent = fmt(PCT(a.k_rev.cond[0]), '%', 0);
+      document.getElementById('r3b').textContent = fmt(PCT(a.k_emp.cond[0]), '%', 0);
+      document.getElementById('r4').textContent = fmt(PP(a.m_share.cond[0]), 'pp');
+      document.getElementById('r4b').textContent = fmt(PP(a.m_share.raw[0]), 'pp');
+    })();
+
+    // ===== charts =====
+    var charts = {};
+    function safeInit(id, config) {
+      if (typeof Chart === 'undefined') { console.error('Chart.js not loaded'); return null; }
+      if (charts[id]) { try { charts[id].destroy(); } catch (e) {} }
+      var el = document.getElementById(id); if (!el) return null;
+      charts[id] = new Chart(el, config); return charts[id];
+    }
+    var zeroLine = { id: 'zero', beforeDatasetsDraw: function(chart) {
+      var horiz = chart.options.indexAxis === 'y', sc = horiz ? chart.scales.x : chart.scales.y; if (!sc) return;
+      var p = sc.getPixelForValue(0), A = chart.chartArea, c = chart.ctx;
+      c.save(); c.strokeStyle = css('--border-strong'); c.lineWidth = 1; c.beginPath();
+      if (horiz) { if (p < A.left || p > A.right) { c.restore(); return; } c.moveTo(p, A.top); c.lineTo(p, A.bottom); }
+      else { if (p < A.top || p > A.bottom) { c.restore(); return; } c.moveTo(A.left, p); c.lineTo(A.right, p); }
+      c.stroke(); c.restore();
+    } };
+    function lineOpts(unit, xTitle, titleCb) {
+      var tc = css('--text-secondary');
+      return {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        interaction: { mode: 'index', intersect: false },
+        layout: { padding: { top: 4, right: 6, bottom: 0, left: 0 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: true, padding: 10, cornerRadius: 6, backgroundColor: css('--surface'), titleColor: css('--text'), bodyColor: css('--text'), borderColor: css('--border-strong'), borderWidth: 1,
+            titleFont: { family: FONT, size: 12, weight: '600' }, bodyFont: { family: FONT, size: 12 },
+            callbacks: { title: titleCb, label: function(c) { return ' ' + c.dataset.label + ': ' + fmt(c.parsed.y, unit); } } }
+        },
+        scales: {
+          x: { ticks: { color: tc, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { family: FONT, size: 11 } }, grid: { display: false }, border: { color: css('--border-strong') }, title: { display: true, text: xTitle, color: tc, font: { family: FONT, size: 11 } } },
+          y: { ticks: { color: tc, maxTicksLimit: 6, font: { family: FONT, size: 11 }, callback: function(v) { return fmt(v, unit, 0); } }, grid: { color: css('--grid') }, border: { display: false } }
+        }
+      };
+    }
+    function profile(id, labels, cond, raw, unit, xTitle, titleCb, color, pts) {
+      safeInit(id, { type: 'line', plugins: [zeroLine],
+        data: { labels: labels, datasets: [
+          { label: 'Same size/age group', data: cond, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: pts ? 2.5 : 0, pointHoverRadius: 4, tension: 0.2 },
+          { label: 'Industry and year only', data: raw, borderColor: css('--muted'), backgroundColor: css('--muted'), borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 3, tension: 0.2 }
+        ] }, options: lineOpts(unit, xTitle, titleCb) });
+    }
+    function buildAge() {
+      var a = DATA.age, labels = a.ages.map(function(x) { return x === 30 ? '30+' : String(x); });
+      var t = function(items) { var i = items[0].dataIndex; return 'Age ' + labels[i] + ' (' + a.n[i].toLocaleString('en-US') + ' firm-years)'; };
+      var c = css('--accent'), x = 'Years since incorporation';
+      profile('a_m', labels, a.m_share.cond.map(PP), a.m_share.raw.map(PP), 'pp', x, t, c);
+      profile('a_k', labels, a.k_rev.cond.map(PCT), a.k_rev.raw.map(PCT), '%', x, t, c);
+      profile('a_e', labels, a.k_emp.cond.map(PCT), a.k_emp.raw.map(PCT), '%', x, t, c);
+    }
+    function buildSize() {
+      var s = DATA.size, labels = s.dec.map(function(d) { return 'D' + d; });
+      var t = function(items) { var i = items[0].dataIndex; return labels[i] + ' (median age ' + s.median_age[i] + ')'; };
+      var c = css('--accent-secondary'), x = 'Revenue decile';
+      profile('s_m', labels, s.m_share.cond.map(PP), s.m_share.raw.map(PP), 'pp', x, t, c, true);
+      profile('s_k', labels, s.k_rev.cond.map(PCT), s.k_rev.raw.map(PCT), '%', x, t, c, true);
+      profile('s_e', labels, s.k_emp.cond.map(PCT), s.k_emp.raw.map(PCT), '%', x, t, c, true);
+    }
+    function buildSectors() {
+      var rows = DATA.sectors.slice().sort(function(x, y) { return y.n - x.n; });
+      var labels = rows.map(function(r) { return SECTOR[r.sector] || r.sector; });
+      [['sec_m', 'm_share', PP, 'pp'], ['sec_k', 'k_rev', PCT, '%']].forEach(function(cfg) {
+        var tc = css('--text-secondary');
+        safeInit(cfg[0], { type: 'bar', plugins: [zeroLine],
+          data: { labels: labels, datasets: [
+            { label: 'Age gap', data: rows.map(function(r) { return cfg[2](r[cfg[1]]); }), backgroundColor: css('--accent'), barPercentage: 0.85, categoryPercentage: 0.7 },
+            { label: 'Size gap', data: rows.map(function(r) { return cfg[2](r[cfg[1] + '_size']); }), backgroundColor: css('--accent-secondary'), barPercentage: 0.85, categoryPercentage: 0.7 }
+          ] },
+          options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
+            interaction: { mode: 'index', intersect: false, axis: 'y' },
+            plugins: { legend: { display: false },
+              tooltip: { enabled: true, padding: 10, cornerRadius: 6, backgroundColor: css('--surface'), titleColor: css('--text'), bodyColor: css('--text'), borderColor: css('--border-strong'), borderWidth: 1,
+                titleFont: { family: FONT, size: 12, weight: '600' }, bodyFont: { family: FONT, size: 12 },
+                callbacks: { title: function(it) { var r = rows[it[0].dataIndex]; return labels[it[0].dataIndex] + ', NAICS ' + r.sector + ' (' + r.n.toLocaleString('en-US') + ' firm-years)'; },
+                  label: function(c) { return ' ' + c.dataset.label + ': ' + fmt(c.parsed.x, cfg[3]); } } } },
+            scales: {
+              x: { ticks: { color: tc, maxTicksLimit: 6, font: { family: FONT, size: 11 }, callback: function(v) { return fmt(v, cfg[3], 0); } }, grid: { color: css('--grid') }, border: { display: false } },
+              y: { ticks: { color: css('--text'), font: { family: FONT, size: 11.5 } }, grid: { display: false }, border: { color: css('--border-strong') } }
+            } } });
+      });
+    }
+
+    // ===== heatmaps =====
+    var tip = document.getElementById('heatTip');
+    function buildHeat(elId, scaleId, key, conv, unit, lim, loLab, hiLab) {
+      var H = DATA.heat, el = document.getElementById(elId), neg = css('--heat-neg'), pos = css('--heat-pos');
+      var vals = H[key].map(function(r) { return r.map(conv); });
+      var html = '<div></div>';
+      for (var d = 1; d <= 10; d++) html += '<div class="hd">' + d + '</div>';
+      H.rows.forEach(function(lab, i) {
+        html += '<div class="rl">' + (lab === '21+' ? '21+' : lab) + ' yrs</div>';
+        vals[i].forEach(function(v, j) {
+          var t = Math.max(-1, Math.min(1, v / lim)), rgb = t >= 0 ? pos : neg, alpha = (0.06 + 0.74 * Math.abs(t)).toFixed(2);
+          html += '<div class="cell" tabindex="0" style="background:rgba(' + rgb + ',' + alpha + ')" data-i="' + i + '" data-j="' + j + '"><span>' + fmt(v, unit, 0).replace(/pp|%/, '') + '</span></div>';
+        });
+      });
+      el.innerHTML = html;
+      document.getElementById(scaleId).innerHTML = '<span>' + loLab + '</span><div class="bar" style="background:linear-gradient(90deg, rgba(' + neg + ',0.8), rgba(' + neg + ',0.06) 50%, rgba(' + pos + ',0.06) 50%, rgba(' + pos + ',0.8))"></div><span>' + hiLab + '</span>';
+      el.querySelectorAll('.cell').forEach(function(c) {
+        function show() {
+          var i = +c.dataset.i, j = +c.dataset.j;
+          tip.innerHTML = '<b>Age ' + H.rows[i] + ', revenue decile ' + (j + 1) + '</b><br>' + fmt(vals[i][j], unit) + ' vs industry-year mean<br>' + H.n[i][j].toLocaleString('en-US') + ' firm-years';
+          var r = c.getBoundingClientRect();
+          tip.style.left = Math.min(window.innerWidth - 270, Math.max(8, r.left + r.width / 2 - 120)) + 'px';
+          tip.style.top = (r.top - 8 - tip.offsetHeight) + 'px'; tip.style.opacity = 1;
+        }
+        function hide() { tip.style.opacity = 0; }
+        c.addEventListener('mouseenter', show); c.addEventListener('focus', show);
+        c.addEventListener('mouseleave', hide); c.addEventListener('blur', hide);
+      });
+    }
+
+
+    // ===== cost structure and labour =====
+    var COMP = [
+      { k: 's_mate', label: 'Materials', col: function() { return 'rgba(' + css('--heat-pos') + ',0.85)'; } },
+      { k: 's_oth', label: 'Other external costs', col: function() { return 'rgba(' + css('--heat-pos') + ',0.40)'; } },
+      { k: 's_staf', label: 'Wages', col: function() { return 'rgba(' + css('--heat-neg') + ',0.85)'; } },
+      { k: 's_depr', label: 'Depreciation', col: function() { return 'rgba(' + css('--heat-neg') + ',0.40)'; } },
+      { k: 's_op', label: 'Operating profit', col: function() { return css('--positive'); } }
+    ];
+    function buildComp() {
+      var C = LAB.comp;
+      [['c_age', C.age, C.age_rows.map(function(r) { return r === '21+' ? '21+' : r; }), C.n_age, 'Age group (years)'],
+       ['c_size', C.size, C.size_rows.map(function(d) { return 'D' + d; }), C.n_size, 'Revenue decile']].forEach(function(cfg) {
+        var tc = css('--text-secondary');
+        safeInit(cfg[0], { type: 'bar', plugins: [zeroLine],
+          data: { labels: cfg[2], datasets: COMP.map(function(c) { return { label: c.label, data: cfg[1][c.k].map(function(v) { return v * 100; }), backgroundColor: c.col(), borderWidth: 0, barPercentage: 0.8, categoryPercentage: 0.85 }; }) },
+          options: { responsive: true, maintainAspectRatio: false, animation: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: false },
+              tooltip: { enabled: true, padding: 10, cornerRadius: 6, backgroundColor: css('--surface'), titleColor: css('--text'), bodyColor: css('--text'), borderColor: css('--border-strong'), borderWidth: 1,
+                titleFont: { family: FONT, size: 12, weight: '600' }, bodyFont: { family: FONT, size: 12 },
+                callbacks: { title: function(it) { return cfg[2][it[0].dataIndex] + ' (' + cfg[3][it[0].dataIndex].toLocaleString('en-US') + ' firm-years)'; },
+                  label: function(c) { return ' ' + c.dataset.label + ': ' + c.parsed.y.toFixed(1) + '%'; } } } },
+            scales: {
+              x: { stacked: true, ticks: { color: tc, maxRotation: 0, font: { family: FONT, size: 11 } }, grid: { display: false }, border: { color: css('--border-strong') }, title: { display: true, text: cfg[4], color: tc, font: { family: FONT, size: 11 } } },
+              y: { stacked: true, max: 100, ticks: { color: tc, maxTicksLimit: 6, font: { family: FONT, size: 11 }, callback: function(v) { return v + '%'; } }, grid: { color: css('--grid') }, border: { display: false } }
+            } } });
+      });
+      document.getElementById('compLegend').innerHTML = COMP.map(function(c) { return '<span><svg width="14" height="10"><rect width="14" height="10" fill="' + c.col() + '"/></svg>' + c.label + '</span>'; }).join('');
+    }
+    function buildLabour() {
+      var L = LAB.lab, ages = L.ages.map(function(x) { return x === 30 ? '30+' : String(x); }), decs = L.dec.map(function(d) { return 'D' + d; });
+      var ta = function(it) { return 'Age ' + ages[it[0].dataIndex]; }, ts = function(it) { return decs[it[0].dataIndex]; };
+      [['w', 'ln_w', PCT, '%'], ['v', 'ln_vapw', PCT, '%'], ['s', 'lshare', PP, 'pp']].forEach(function(m) {
+        var Y = L[m[1]];
+        profile('l_a_' + m[0], ages, Y.age_cond.map(m[2]), Y.age_raw.map(m[2]), m[3], 'Years since incorporation', ta, css('--accent'));
+        profile('l_s_' + m[0], decs, Y.size_cond.map(m[2]), Y.size_raw.map(m[2]), m[3], 'Revenue decile', ts, css('--accent-secondary'), true);
+      });
+    }
+    (function() {
+      var C = LAB.comp, L = LAB.lab;
+      document.getElementById('nObs2').textContent = LAB.N.toLocaleString('en-US');
+      document.getElementById('nFirms2').textContent = LAB.firms.toLocaleString('en-US');
+      document.getElementById('nZero').textContent = LAB.robust.N_zero_fill.toLocaleString('en-US');
+      function sh(k) { return [PP(C.age[k][0] - C.age[k][4]), PP(C.size[k][9] - C.size[k][0])]; }
+      var rows = [
+        ['Materials share of sales', sh('s_mate'), 'pp'],
+        ['Other external costs share of sales', sh('s_oth'), 'pp'],
+        ['Wage bill share of sales', sh('s_staf'), 'pp'],
+        ['Operating profit share of sales', sh('s_op'), 'pp'],
+        ['Wage per worker', [PCT(L.ln_w.age_cond[0]), PCT(L.ln_w.size_cond[9])], '%'],
+        ['Value added per worker', [PCT(L.ln_vapw.age_cond[0]), PCT(L.ln_vapw.size_cond[9])], '%'],
+        ['Labour share of value added', [PP(L.lshare.age_cond[0]), PP(L.lshare.size_cond[9])], 'pp']
+      ];
+      document.getElementById('t2body').innerHTML = rows.map(function(r) {
+        return '<tr><td class="claim">' + r[0] + '</td><td class="num">' + fmt(r[1][0], r[2], r[2] === '%' ? 0 : 1) + '</td><td class="num">' + fmt(r[1][1], r[2], r[2] === '%' ? 0 : 1) + '</td></tr>';
+      }).join('');
+    })();
+
+    var chartsBuilt = false;
+    function buildCharts() {
+      if (typeof Chart === 'undefined') { console.error('Chart.js not loaded'); return; }
+      buildAge(); buildSize(); buildSectors(); buildComp(); buildLabour();
+      buildHeat('heat_m', 'scale_m', 'm_share', PP, 'pp', 10, 'makes more in-house', 'buys in more');
+      buildHeat('heat_k', 'scale_k', 'k_rev', PCT, '%', 150, 'less capital', 'more capital');
+      chartsBuilt = true;
+    }
+    function onThemeChange() { if (chartsBuilt) setTimeout(buildCharts, 30); }
+
+    applyTheme(currentTheme);
+    document.addEventListener('DOMContentLoaded', buildCharts);
+  </script>
+</body>
+</html>

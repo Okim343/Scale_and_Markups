@@ -2,7 +2,8 @@
 (spec: 02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_EXTRACTION.md).
 
 Pulls exactly the GNR / markup / concentration inputs for Spanish unconsolidated
-(U1, U2) industrial-company accounts, all size tiers, closing years 2014-2024.
+(U1, U2) industrial-company accounts, all size tiers, closing years 2014-2024,
+plus each firm's date of incorporation (for firm age).
 Chunked by size tier x year and restartable: finished chunks are skipped.
 
 Credentials come from ~/.pgpass and the WRDS_USERNAME env var; nothing is stored here.
@@ -10,7 +11,7 @@ Credentials come from ~/.pgpass and the WRDS_USERNAME env var; nothing is stored
     python 03_Empirical/02_Orbis/01_Cleaning/01_code/01_extract_orbis_es.py
 
 Writes (all gitignored except the report):
-    00_indata/raw_chunks/fin_{tier}_{year}.parquet, firms_{tier}.parquet
+    00_indata/raw_chunks/fin_{tier}_{year}.parquet, firms_{tier}.parquet, inc_{tier}.parquet
     00_indata/orbis_es_financials.parquet
     00_indata/orbis_es_firms.parquet
     00_indata/extraction_report.md
@@ -33,6 +34,8 @@ FIN_COLS = KEYS + ["closdate_year", "nr_months",
                    "turn", "opre", "mate", "staf", "tfas", "fias", "empl"]
 MONEY = ["turn", "opre", "mate", "staf", "tfas", "fias", "empl"]
 CODES = ["naceccod2", "nacepcod2", "naicsccod2017", "naicspcod2017"]
+# Incorporation date lives in ob_legal_info_{tier} (one row per bvdid).
+INC_BATCH = 20_000
 
 
 def fin_sql(tier, year):
@@ -49,6 +52,41 @@ def firm_sql(tier):
             f"max(CASE WHEN natclass = 'CNAE 2009' THEN natpcod END) AS cnae2009_pcod "
             f"FROM {LIB}.ob_industry_classifications_{tier} "
             f"WHERE contact_ctryiso = 'ES' GROUP BY bvdid")
+
+
+def inc_sql(tier, ids):
+    # Look up our own firms by bvdid (indexed): a prefix scan of the ~570M-row table is
+    # far slower, and its contact_ctryiso also tags non-Spanish bvdids.
+    id_list = ", ".join(f"'{i}'" for i in ids)
+    return (f"SELECT bvdid, dateinc FROM {LIB}.ob_legal_info_{tier} "
+            f"WHERE bvdid IN ({id_list})")
+
+
+def fetch_inc(db, tier):
+    """Incorporation dates for every firm in this tier's financial chunks."""
+    path = CHUNK_DIR / f"inc_{tier}.parquet"
+    if path.exists():
+        print(f"skip inc {tier} (exists)")
+        return
+    ids = sorted(set().union(*(
+        pd.read_parquet(CHUNK_DIR / f"fin_{tier}_{y}.parquet", columns=["bvdid"])["bvdid"]
+        for y in YEARS)))
+    t0 = time.time()
+    parts = [db.raw_sql(inc_sql(tier, ids[i:i + INC_BATCH]))
+             for i in range(0, len(ids), INC_BATCH)]
+    df = pd.concat(parts, ignore_index=True)
+    df.to_parquet(path, index=False)
+    print(f"inc {tier}: {len(df):,} rows for {len(ids):,} firms in {time.time() - t0:.0f}s")
+
+
+def load_inc():
+    """One row per firm: earliest incorporation date across tiers, plus its year."""
+    inc = pd.concat([pd.read_parquet(CHUNK_DIR / f"inc_{t}.parquet") for t in TIERS],
+                    ignore_index=True)
+    inc["dateinc"] = pd.to_datetime(inc["dateinc"].astype("string"), errors="coerce")
+    inc = inc.groupby("bvdid", as_index=False)["dateinc"].min()
+    inc["inc_year"] = inc["dateinc"].dt.year.astype("Int16")
+    return inc
 
 
 def fetch(db, sql, path, label):
@@ -69,6 +107,7 @@ def main():
         for year in YEARS:
             fetch(db, fin_sql(tier, year), CHUNK_DIR / f"fin_{tier}_{year}.parquet",
                   f"fin {tier} {year}")
+        fetch_inc(db, tier)
     db.close()
 
     fin = pd.concat(
@@ -82,6 +121,7 @@ def main():
     firms = pd.concat([pd.read_parquet(CHUNK_DIR / f"firms_{t}.parquet").assign(size_tier=t)
                        for t in TIERS], ignore_index=True)
     firms = firms[firms["bvdid"].isin(fin["bvdid"].unique())]
+    firms = firms.merge(load_inc(), on="bvdid", how="left")
 
     fin.to_parquet(IN_DIR / "orbis_es_financials.parquet", index=False)
     firms.to_parquet(IN_DIR / "orbis_es_firms.parquet", index=False)
@@ -113,6 +153,14 @@ def write_report(fin, firms):
         out.append(f"- firms with more than one distinct {c}: {(firms[f'n_{c}'] > 1).sum():,}")
     out.append("")
 
+    inc = firms.drop_duplicates("bvdid")["inc_year"]
+    q = inc.dropna().astype(int).quantile([0.1, 0.5, 0.9]).astype(int).tolist()
+    out += ["## Incorporation date", "",
+            f"- firms with an incorporation date: {inc.notna().mean():.4f}",
+            f"- incorporation year p10 / p50 / p90: {q[0]} / {q[1]} / {q[2]}",
+            f"- incorporated after 2014 (born inside the window): {(inc > 2014).mean():.4f}",
+            f"- incorporated after 2024 (inconsistent with the accounts): {(inc > 2024).sum():,}", ""]
+
     pos = fin[MONEY].gt(0)
     rev = fin["turn"].fillna(fin["opre"]).gt(0)
     fin["gnr_all"] = rev & pos["mate"] & pos["staf"] & pos["tfas"]
@@ -133,7 +181,7 @@ def write_report(fin, firms):
     for f in ["orbis_es_financials.parquet", "orbis_es_firms.parquet"]:
         out.append(f"- {f}: {(IN_DIR / f).stat().st_size / 1e6:.0f} MB")
     out += ["", "## SQL (per tier and year)", "", "```sql", fin_sql("{tier}", "{year}"),
-            firm_sql("{tier}"), "```", ""]
+            firm_sql("{tier}"), inc_sql("{tier}", ["{bvdid}", "..."]), "```", ""]
 
     (IN_DIR / "extraction_report.md").write_text("\n".join(out) + "\n")
     print("\n".join(out))

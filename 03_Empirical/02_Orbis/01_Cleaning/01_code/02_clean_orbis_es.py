@@ -143,6 +143,9 @@ def load_firms():
     out["nace_section"] = out["nace_div"].map(
         lambda d: nace_division_to_section(int(d)) if pd.notna(d) else None)
     out["naics2_raw"] = pd.to_numeric(out["naics4"].str[:2], errors="coerce")
+    # Incorporation year (firm age); absent in extracts made before it was added.
+    out["inc_year"] = (firms["inc_year"].astype("Int16").values if "inc_year" in firms
+                       else pd.array([pd.NA] * len(out), dtype="Int16"))
     return out
 
 
@@ -463,7 +466,7 @@ def main():
     df = deflate(attach_deflators(df))
     keep = (["bvdid", "year", "closdate", "conscode", "filing_type", "size_tier",
              "ind2d", "naics2_raw", "sector_id", "naics4", "nace3", "nace_div", "nace_section",
-             "cnae4", "a64", "va_defl_level", "excluded_sector", "pos_tfas", "pos_fias",
+             "cnae4", "inc_year", "a64", "va_defl_level", "excluded_sector", "pos_tfas", "pos_fias",
              "rev_from_opre", "turn", "opre", "empl"] + MONEY
             + [f"{v}_D" for v in MONEY] + ["rev_Ds", "mate_Ds", "staf_Ds", "tfas_Ds", "fias_Ds"]
             + ["p_hicp", "p_gdp", "p_va", "p_gfcf"])

@@ -20,7 +20,8 @@ import numpy as np
 import pytest
 
 from orbis_model.model.market import solve
-from orbis_model.model.market_batch import solve_batch
+from orbis_model.model.market_batch import _solve_batch_chunk, solve_batch
+from orbis_model.model.pricing import PricingRegime
 
 
 GAMMA = 3.8
@@ -185,6 +186,52 @@ def test_partial_mask_scalar_vectorized_parity():
     np.testing.assert_array_equal(vectorized.s[~mask], 0.0)
     np.testing.assert_array_equal(vectorized.sales[~mask], 0.0)
     np.testing.assert_allclose(vectorized.s.sum(axis=1), 1.0, atol=1e-8)
+
+
+def _padded_pool(M: int, H: int, seed: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Pool-like draw: active firms in the leading slots, a wide all-inactive tail."""
+    rng = np.random.default_rng(seed)
+    alpha, v = _draw_markets(M, H, seed=seed)
+    n_active = rng.integers(2, H // 4, size=M)
+    mask = np.arange(H)[None, :] < n_active[:, None]
+    mask[0, 1] = False  # an interior hole inside the kept width
+    return alpha, v, mask
+
+
+@pytest.mark.parametrize("backend", ["scalar", "vectorized"])
+@pytest.mark.parametrize("n_jobs", [1, 3])
+def test_trailing_padding_trim_matches_full_width(backend: str, n_jobs: int):
+    """solve_batch drops all-inactive trailing slots; the result must match the
+    untrimmed kernel and keep the full (M, H) shape with zeros in the tail."""
+    M, H = 12, 80
+    alpha, v, mask = _padded_pool(M, H, seed=55)
+    width = int(np.flatnonzero(mask.any(axis=0))[-1]) + 1
+    assert width < H
+    common = dict(
+        eta=ETA, gamma=GAMMA, w=W, R=R, X_market=X_MARKET, a_i=A_I,
+        y_hat=Y_HAT, phi_v=0.5, regime=PricingRegime.MARKET, mu_bar=None,
+        love_of_variety=False,
+    )
+    kwargs = dict(tol=1e-8, max_iter=500, damping=0.2, newton_fallback_after=50)
+    full = _solve_batch_chunk(
+        alpha, v, active_mask=mask, backend=backend, solver_kwargs=kwargs, **common,
+    )
+    trimmed = solve_batch(
+        alpha, v, active_mask=mask, backend=backend, parallel_n_jobs=n_jobs,
+        parallel_min_markets=1, parallel_min_markets_per_job=2, **common, **kwargs,
+    )
+    assert np.all(full.converged)
+    for field in ALL_FIELDS:
+        a, b = getattr(full, field), getattr(trimmed, field)
+        assert a.shape == b.shape, field
+        if backend == "scalar" or field in ("converged", "used_newton", "iterations"):
+            # The scalar oracle only ever sees the active firms: bit-identical.
+            np.testing.assert_array_equal(a, b, err_msg=field)
+        else:
+            # Row reductions over fewer zero columns may round differently.
+            np.testing.assert_allclose(a, b, rtol=1e-12, atol=1e-15, err_msg=field)
+    for field in ("s", "mu", "sales", "cost", "output", "price"):
+        np.testing.assert_array_equal(getattr(trimmed, field)[:, width:], 0.0)
 
 
 def test_unknown_backend_raises():

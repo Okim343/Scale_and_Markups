@@ -19,7 +19,7 @@ from __future__ import annotations
 import atexit
 from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures.process as _cf_process
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import multiprocessing
 import os
 import threading
@@ -97,6 +97,22 @@ class BatchSolution:
 
 
 _BATCH_SOLUTION_FIELDS = tuple(BatchSolution.__dataclass_fields__)
+_FIRM_FIELDS = ("s", "mu", "sales", "cost", "output", "price")
+
+
+def _pad_firm_axis(solution: BatchSolution, n: int) -> BatchSolution:
+    """Zero-pad the per-firm arrays of ``solution`` back to ``n`` columns.
+
+    Both backends write exact zeros at inactive slots, so padding the trimmed
+    solution reproduces the full-width output.
+    """
+    width = solution.s.shape[1]
+    if width == n:
+        return solution
+    pad = ((0, 0), (0, n - width))
+    return replace(solution, **{f: np.pad(getattr(solution, f), pad) for f in _FIRM_FIELDS})
+
+
 _EXECUTOR_CACHE: dict[int, ProcessPoolExecutor] = {}
 _EXECUTOR_LOCK = threading.Lock()
 _ORIGINAL_CHECK_SYSTEM_LIMITS = _cf_process._check_system_limits
@@ -620,6 +636,18 @@ def solve_batch(
     if backend not in {"scalar", "vectorized"}:
         raise ValueError(f"unknown backend {backend!r}; expected 'scalar' or 'vectorized'")
 
+    # Drop the trailing slots that are inactive in every market. The slot pool
+    # H (2500) is far wider than the largest market (about 200 active firms at
+    # the Orbis calibration), and every fixed-point sweep runs over the full
+    # row, so solving on the trimmed width cuts the per-sweep work by H/width.
+    # Inactive slots never enter a market's solve; outputs are zero-padded back.
+    n_full = alpha.shape[1]
+    width = int(np.flatnonzero(active_mask.any(axis=0))[-1]) + 1
+    if width < n_full:
+        alpha = np.ascontiguousarray(alpha[:, :width])
+        v = np.ascontiguousarray(v[:, :width])
+        active_mask = np.ascontiguousarray(active_mask[:, :width])
+
     _t_sb = _time.perf_counter() if _PROFILE else 0.0
     chunk_bounds = _market_chunk_bounds(
         alpha.shape[0],
@@ -640,7 +668,7 @@ def solve_batch(
             _PROFILE_STATS["solve_batch_calls"] += 1
             _PROFILE_STATS["serial_dispatches"] += 1
             _PROFILE_STATS["t_solve_batch"] += _time.perf_counter() - _t_sb
-        return result
+        return _pad_firm_axis(result, n_full)
     payloads = [
         {
             "alpha": alpha[start:stop],
@@ -669,4 +697,4 @@ def solve_batch(
         _PROFILE_STATS["solve_batch_calls"] += 1
         _PROFILE_STATS["parallel_dispatches"] += 1
         _PROFILE_STATS["t_solve_batch"] += _time.perf_counter() - _t_sb
-    return result
+    return _pad_firm_axis(result, n_full)

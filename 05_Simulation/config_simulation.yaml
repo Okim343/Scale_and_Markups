@@ -22,6 +22,10 @@ monte_carlo:
 welfare:
   M: 10000                 # markets for 02_welfare.py (the M the 04_Code welfare job ran with)
 
+fixed_input:               # 03_fixed_input_welfare.py: PE_I and PE_K least_squares (trf)
+  tol: 1.0e-5              # ftol = xtol = gtol; converged needs residual <= 10 * tol
+  max_nfev: 40             # residual evaluations (Jacobian passes add 3 or 4 solves each)
+
 parameters:
   beta: 0.96               # discount factor from EMX
   delta_K: 0.06            # capital depreciation rate from EMX

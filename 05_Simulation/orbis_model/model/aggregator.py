@@ -283,6 +283,7 @@ def aggregate_pooled_markets(
     delta_K: float,
     phi_v: float = DEFAULT_PHI_V,
     weights: np.ndarray | None = None,
+    P_mat: float = 1.0,
 ) -> PooledAggregate:
     """Aggregate active firms and normalized market bundles without sectors.
 
@@ -294,6 +295,12 @@ def aggregate_pooled_markets(
     ``K' = (1-delta_K) K + I``, so the steady state diverts ``I = delta_K K`` of
     the composite to investment and consumption is ``C = Q - M - delta_K K``.
     ``delta_K`` is required (no default) so no caller silently drops investment.
+
+    ``P_mat`` is the materials price firms face inside ``Omega^g`` (1 in every
+    market allocation; a shadow price in the fixed-input planner). Materials
+    spend is ``(1-phi_v)·TC`` at any ``P_mat``, so the materials quantity that
+    enters the resource constraint is ``M = (1-phi_v)·TC / P_mat``. ``K`` and
+    ``L`` are unchanged (Cobb-Douglas shares of ``phi_v·TC``).
     """
     mask = np.asarray(active_mask, dtype=bool)
     if mask.shape != solution.s.shape:
@@ -308,6 +315,8 @@ def aggregate_pooled_markets(
         raise ValueError("phi_v must lie in (0, 1]")
     if not 0.0 <= delta_K <= 1.0:
         raise ValueError("delta_K must lie in [0, 1]")
+    if not P_mat > 0.0:
+        raise ValueError("P_mat must be positive")
 
     n_markets = mask.shape[0]
     omega = exposure_weights(n_markets, weights)
@@ -332,7 +341,7 @@ def aggregate_pooled_markets(
     variable_cost = cost_sample * scale             # population-scaled Σ TC
     overhead_labor = float(n_active.sum()) * operating_cost_labor * scale
     # Only phi_v of variable cost is a primary-factor payment (wL + RK = φv·TC);
-    # the 1-φv fraction buys materials of the composite (P=1). Factor demands
+    # the 1-φv fraction buys materials of the composite at P_mat. Factor demands
     # keep the original population scaling.
     primary_factor_cost = phi_v * variable_cost
     L = (1.0 - a) * primary_factor_cost / w + overhead_labor
@@ -340,7 +349,8 @@ def aggregate_pooled_markets(
     # The resource constraint Q = C + M + I uses the same population scale as
     # factor payments and profits; steady-state investment replaces depreciation,
     # I = delta_K K. As phi_v → 1, M → 0; with delta_K = 0, C = Q - M.
-    M = (1.0 - phi_v) * variable_cost
+    # M is a quantity of the composite: materials spend (1-φv)·TC over P_mat.
+    M = (1.0 - phi_v) * variable_cost / P_mat
     I = delta_K * K
     C = Q - M - I
     variable_profit = float((solution.sales[mask] - solution.cost[mask]).sum()) * scale

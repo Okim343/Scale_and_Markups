@@ -50,6 +50,7 @@ def allocate_exogenous(
     a: float,
     phi_v: float = DEFAULT_PHI_V,
     y_hat: float = 1.0,
+    P_mat: float = 1.0,
     love_of_variety: bool | str = False,
     regime: PricingRegime = PricingRegime.MARKET,
     mu_bar: float | None = None,
@@ -61,6 +62,8 @@ def allocate_exogenous(
     is fixed at ``0.0`` (no per-period operating cost) and the Berry-game
     diagnostic fields (``Ed_full_pool``, ``pool_binds``, ``empty_market``) are
     retained for container compatibility but carry no economic content here.
+    ``P_mat`` is the materials price inside ``Omega^g`` (1 in every market
+    allocation; a shadow price in the fixed-input planner).
     """
     alpha = np.asarray(alpha, dtype=np.float64)
     v = np.asarray(v, dtype=np.float64)
@@ -74,7 +77,7 @@ def allocate_exogenous(
 
     solution = solve_batch(
         alpha, v, eta=eta, gamma=gamma, w=w, R=R, X_market=X_market, a_i=a,
-        phi_v=phi_v, y_hat=y_hat, active_mask=mask,
+        phi_v=phi_v, y_hat=y_hat, P_mat=P_mat, active_mask=mask,
         love_of_variety=love_of_variety,
         regime=regime, mu_bar=mu_bar, **dict(market_solver_kwargs or {}),
     )

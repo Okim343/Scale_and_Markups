@@ -93,6 +93,7 @@ class PooledEquilibrium:
     y_hat: float = 1.0
     y_sw: float = 1.0        # sales-weighted mean active output (diagnostic)
     y_anchor: float = 1.0    # anchoring statistic: median active output
+    P_mat: float = 1.0       # materials price in Omega^g (shadow price if != 1)
 
     @property
     def P_agg(self) -> float:
@@ -110,15 +111,48 @@ class PooledEquilibrium:
     def Pi_agg(self) -> float:
         return self.aggregates.profits
 
-    def walras_check(self) -> dict[str, float]:
-        # Household income wL + RK + Pi buys consumption and replacement
-        # investment I = delta_K K.
-        income = self.w * self.L_agg + self.R * self.K_agg + self.Pi_agg
-        spending = self.C + self.aggregates.I
-        gap = abs(spending - income)
-        return {"C": self.C, "I": self.aggregates.I, "income": income,
-                "abs_gap": gap, "rel_gap": gap / max(abs(spending), 1e-30)}
+    def walras_check(self, R_euler: float | None = None) -> dict[str, float]:
+        """Household budget: income ``wL + RK + Pi + T_M`` against ``C + I``.
 
+        ``I = delta_K K`` is replacement investment. In the fixed-input planner
+        firms pay shadow prices that differ from resource costs, and the wedges
+        are rebated lump-sum:
+
+        * materials: firms pay ``P_mat`` per unit while a unit of the composite
+          costs 1 in the resource constraint, so ``T_M = (P_mat - 1) M`` is
+          added to income. With ``P_mat = 1`` it is exactly zero, so the check
+          is the market one, bit for bit.
+        * capital: firms pay ``R`` while the household's Euler rate is
+          ``R_euler``; the rent ``(R - R_euler) K`` is already inside ``RK``, so
+          it is reported as ``rent_capital`` (when ``R_euler`` is given) but not
+          added again.
+
+        The budget is not a tight identity in this implementation, in any
+        regime. Since ``wL + RK = phi_v TC``, ``Pi = sales - TC`` and
+        ``P_mat M = (1 - phi_v) TC`` (population units), income minus ``C + I``
+        equals ``sales - Q`` exactly: every market spends the common
+        ``X_market`` (``P_im Y_im = X_market``) instead of its CES demand share,
+        so total sales differ from ``P Q`` with ``P = 1`` whenever market price
+        indices differ. That term is ``aggregation_gap``; ``closure_residual``
+        (income minus spending minus that gap) is zero up to rounding.
+        """
+        agg = self.aggregates
+        solution = self.participation.solution
+        mask = self.participation.active_mask
+        sales = float(solution.sales[mask].sum()) * agg.population_scale
+        rent_M = (self.P_mat - 1.0) * agg.M
+        income = self.w * self.L_agg + self.R * self.K_agg + self.Pi_agg + rent_M
+        spending = self.C + agg.I
+        gap = abs(spending - income)
+        aggregation_gap = sales - agg.Q
+        out = {"C": self.C, "I": agg.I, "income": income,
+               "rent_materials": rent_M,
+               "abs_gap": gap, "rel_gap": gap / max(abs(spending), 1e-30),
+               "aggregation_gap": aggregation_gap,
+               "closure_residual": income - spending - aggregation_gap}
+        if R_euler is not None:
+            out["rent_capital"] = (self.R - R_euler) * self.K_agg
+        return out
 
 
 def euler_R(beta: float, delta_K: float) -> float:
@@ -143,12 +177,15 @@ def solve_pooled_economy(
     mu_bar: float | None = None,
     market_solver_kwargs: dict | None = None,
     wf_reference: float | None = None,
+    P_mat: float = 1.0,
 ) -> PooledEquilibrium:
     """One pooled forward pass pricing the exogenous Poisson active mask.
 
     ``active_mask`` is the EMX-style exogenous entry mask (see
     :func:`model.pool.allocate_poisson`); every firm in it produces. ``K_switch``
     is accepted for signature compatibility but unused (there is no selection).
+    ``P_mat`` is the materials price inside ``Omega^g``; it is 1 in every market
+    allocation and a free shadow price in the fixed-input planner.
     """
     alpha = np.asarray(alpha, dtype=float)
     v = np.asarray(v, dtype=float)
@@ -159,7 +196,7 @@ def solve_pooled_economy(
     participation = allocate_exogenous(
         alpha, v, np.asarray(active_mask, dtype=bool),
         eta=params.eta, gamma=params.gamma, w=w, R=R, X_market=X_market,
-        a=params.a, phi_v=params.phi_v, y_hat=params.y_hat,
+        a=params.a, phi_v=params.phi_v, y_hat=params.y_hat, P_mat=P_mat,
         love_of_variety=love_of_variety,
         regime=regime, mu_bar=mu_bar, market_solver_kwargs=market_solver_kwargs,
     )
@@ -168,7 +205,7 @@ def solve_pooled_economy(
         participation.solution, participation.active_mask, eta=params.eta,
         operating_cost_labor=operating_cost_labor, n_firms_cs=n_firms_cs,
         w=w, R=R, a=params.a, delta_K=delta_K, phi_v=params.phi_v,
-        weights=exposure,
+        weights=exposure, P_mat=P_mat,
     )
     active = participation.active_mask
     sales_active = participation.solution.sales[active]
@@ -187,6 +224,7 @@ def solve_pooled_economy(
         chi=w / max(aggregates.C, 1e-30), regime=regime,
         converged=bool(np.all(participation.converged)),
         v_min=params.v_min, y_hat=params.y_hat, y_sw=y_sw, y_anchor=y_anchor,
+        P_mat=float(P_mat),
     )
 
 

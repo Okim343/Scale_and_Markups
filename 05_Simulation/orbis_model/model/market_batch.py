@@ -130,6 +130,7 @@ def _solve_scalar(
     a_i: float,
     phi_v: float = DEFAULT_PHI_V,
     y_hat: float = 1.0,
+    P_mat: float = 1.0,
     regime: PricingRegime = PricingRegime.MARKET,
     mu_bar: float | None = None,
     love_of_variety: bool | str = False,
@@ -174,7 +175,7 @@ def _solve_scalar(
             v=v[m, mask_m],
             eta=eta, gamma=gamma,
             w=w, R=R,
-            X_market=X_market, a_i=a_i, phi_v=phi_v, y_hat=y_hat,
+            X_market=X_market, a_i=a_i, phi_v=phi_v, y_hat=y_hat, P=P_mat,
             regime=regime, mu_bar=mu_bar,
             love_of_variety=love_of_variety,
             **solver_kwargs,
@@ -286,6 +287,7 @@ def _solve_vectorized(
     a_i: float,
     phi_v: float = DEFAULT_PHI_V,
     y_hat: float = 1.0,
+    P_mat: float = 1.0,
     regime: PricingRegime = PricingRegime.MARKET,
     mu_bar: float | None = None,
     tol: float = 1e-8,
@@ -312,7 +314,7 @@ def _solve_vectorized(
     n_active = active_mask.sum(axis=1)
     if y_hat <= 0.0:
         raise ValueError(f"y_hat must be positive; got {y_hat}")
-    Omega = _omega_gross(w, R, a_i, phi_v)
+    Omega = _omega_gross(w, R, a_i, phi_v, P_mat)
     variety_factor = np.array([
         _variety_normalization_factor(int(k), gamma, love_of_variety)
         for k in n_active
@@ -404,7 +406,7 @@ def _solve_vectorized(
         sol = _market.solve(
             n=int(n_active[m]), alpha=alpha[m, mask_m], v=v[m, mask_m],
             eta=eta, gamma=gamma, w=w, R=R,
-            X_market=X_market, a_i=a_i, phi_v=phi_v, y_hat=y_hat,
+            X_market=X_market, a_i=a_i, phi_v=phi_v, y_hat=y_hat, P=P_mat,
             regime=regime, mu_bar=mu_bar,
             love_of_variety=love_of_variety,
             tol=tol, max_iter=max_iter,
@@ -529,12 +531,13 @@ def _solve_batch_chunk(
     active_mask: np.ndarray,
     backend: str,
     solver_kwargs: dict[str, Any],
+    P_mat: float = 1.0,
 ) -> BatchSolution:
     if backend == "scalar":
         return _solve_scalar(
             alpha, v,
             eta=eta, gamma=gamma, w=w, R=R, X_market=X_market, a_i=a_i,
-            phi_v=phi_v, y_hat=y_hat,
+            phi_v=phi_v, y_hat=y_hat, P_mat=P_mat,
             regime=regime, mu_bar=mu_bar, love_of_variety=love_of_variety,
             active_mask=active_mask,
             **solver_kwargs,
@@ -542,7 +545,7 @@ def _solve_batch_chunk(
     return _solve_vectorized(
         alpha, v,
         eta=eta, gamma=gamma, w=w, R=R, X_market=X_market, a_i=a_i,
-        phi_v=phi_v, y_hat=y_hat,
+        phi_v=phi_v, y_hat=y_hat, P_mat=P_mat,
         regime=regime, mu_bar=mu_bar, love_of_variety=love_of_variety,
         active_mask=active_mask,
         **solver_kwargs,
@@ -577,6 +580,7 @@ def solve_batch(
     a_i: float,
     phi_v: float = DEFAULT_PHI_V,
     y_hat: float = 1.0,
+    P_mat: float = 1.0,
     regime: PricingRegime = PricingRegime.MARKET,
     mu_bar: float | None = None,
     love_of_variety: bool | str = False,
@@ -599,6 +603,10 @@ def solve_batch(
     y_hat
         Common output anchor. Production calibration normalizes this to one,
         but it is threaded for identity tests and diagnostics.
+    P_mat
+        Price of materials inside the gross-output unit cost ``Omega^g``. Firms
+        buy materials at the composite price ``P = 1``; the fixed-input planner
+        (:mod:`orbis_model.welfare.fixed_input`) frees it as a shadow price.
     backend
         ``"scalar"`` (default) loops over markets calling the oracle
         :func:`market.solve`. ``"vectorized"`` advances a NumPy-vectorized
@@ -659,7 +667,7 @@ def solve_batch(
         result = _solve_batch_chunk(
             alpha, v,
             eta=eta, gamma=gamma, w=w, R=R, X_market=X_market, a_i=a_i,
-            phi_v=phi_v, y_hat=y_hat,
+            phi_v=phi_v, y_hat=y_hat, P_mat=P_mat,
             regime=regime, mu_bar=mu_bar, love_of_variety=love_of_variety,
             active_mask=active_mask, backend=backend,
             solver_kwargs=dict(solver_kwargs),
@@ -681,6 +689,7 @@ def solve_batch(
             "a_i": a_i,
             "phi_v": phi_v,
             "y_hat": y_hat,
+            "P_mat": P_mat,
             "regime": regime,
             "mu_bar": mu_bar,
             "love_of_variety": love_of_variety,

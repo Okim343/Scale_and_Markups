@@ -38,6 +38,9 @@ def _pooled_equilibrium():
         R=0.1,
         X_market=1.0,
         n_firms_cs=100.0,
+        # Toy prices (w=1, R=0.1) are not an equilibrium; delta_K=0 keeps C > 0.
+        # Investment netting is tested in test_gross_output.py.
+        delta_K=0.0,
         active_mask=_exogenous_mask(),
         market_solver_kwargs={"backend": "vectorized"},
     )
@@ -71,12 +74,13 @@ def test_exposure_aggregator_uses_normalized_levels_and_weight_hook():
         w=1.0,
         R=0.1,
         a=0.35,
+        delta_K=0.06,
         weights=omega,
     )
     Y = solution.Y_j_normalized
     P_j = solution.P_j_normalized
     # The CES composite is now the gross output Q; consumption is net of
-    # materials (C = Q - M).
+    # materials and replacement investment (C = Q - M - delta_K K).
     expected_Q_sample = (np.sum(omega ** 0.5 * Y ** 0.5)) ** 2.0
     expected_scale = aggregate.population_scale
     expected_Q = expected_scale * expected_Q_sample
@@ -88,7 +92,8 @@ def test_exposure_aggregator_uses_normalized_levels_and_weight_hook():
     from orbis_model.model.pricing import DEFAULT_PHI_V
     expected_M = expected_scale * (1.0 - DEFAULT_PHI_V) * float(solution.cost[mask].sum())
     assert aggregate.M == pytest.approx(expected_M)
-    assert aggregate.C == pytest.approx(aggregate.Q - aggregate.M)
+    assert aggregate.I == pytest.approx(0.06 * aggregate.K)
+    assert aggregate.C == pytest.approx(aggregate.Q - aggregate.M - aggregate.I)
     np.testing.assert_allclose(aggregate.exposure_weights, omega)
     np.testing.assert_allclose(exposure_weights(2), [0.5, 0.5])
 
@@ -99,7 +104,7 @@ def test_resource_accounting_uses_active_firms_only():
     mask = eq.participation.active_mask
     baseline = aggregate_pooled_markets(
         solution, mask, eta=2.0, operating_cost_labor=0.0,
-        n_firms_cs=100.0, w=1.0, R=0.1, a=0.35,
+        n_firms_cs=100.0, w=1.0, R=0.1, a=0.35, delta_K=0.06,
     )
     # Inactive firms must not enter the resource totals, however large their
     # (masked-out) cost entries are.
@@ -108,7 +113,7 @@ def test_resource_accounting_uses_active_firms_only():
     corrupted = replace(solution, cost=corrupted_cost)
     active_only = aggregate_pooled_markets(
         corrupted, mask, eta=2.0, operating_cost_labor=0.0,
-        n_firms_cs=100.0, w=1.0, R=0.1, a=0.35,
+        n_firms_cs=100.0, w=1.0, R=0.1, a=0.35, delta_K=0.06,
     )
     assert active_only.L == baseline.L
     assert active_only.K == baseline.K

@@ -29,7 +29,8 @@ class PooledAggregate:
     """Exposure and resource aggregates for one pooled market simulation.
 
     ``Q`` is the top-level gross composite (CES over markets) on which demand
-    loads; ``M`` is aggregate materials use; ``C = Q - M`` is net consumption.
+    loads; ``M`` is aggregate materials use; ``I = delta_K K`` is steady-state
+    investment; ``C = Q - M - I`` is consumption.
     """
 
     C: float
@@ -43,6 +44,7 @@ class PooledAggregate:
     exposure_weights: np.ndarray
     Q: float = 0.0
     M: float = 0.0
+    I: float = 0.0
 
 
 RTS_GAP_KEY = "alpha_rts_gap_top5_bottom50"
@@ -278,6 +280,7 @@ def aggregate_pooled_markets(
     w: float,
     R: float,
     a: float,
+    delta_K: float,
     phi_v: float = DEFAULT_PHI_V,
     weights: np.ndarray | None = None,
 ) -> PooledAggregate:
@@ -287,8 +290,10 @@ def aggregate_pooled_markets(
     sample gross composite that is scaled to the same population units as costs.
     Only the ``phi_v`` fraction of total variable cost is a primary-factor
     payment (``wL + RK = phi_v·TC``), the ``1-phi_v`` fraction buys materials
-    ``M = (1-phi_v)·TC`` (at ``P=1``); net consumption is ``C = Q - M``.
-    As ``phi_v → 1`` materials vanish and ``C → Q``.
+    ``M = (1-phi_v)·TC`` (at ``P=1``). Capital follows
+    ``K' = (1-delta_K) K + I``, so the steady state diverts ``I = delta_K K`` of
+    the composite to investment and consumption is ``C = Q - M - delta_K K``.
+    ``delta_K`` is required (no default) so no caller silently drops investment.
     """
     mask = np.asarray(active_mask, dtype=bool)
     if mask.shape != solution.s.shape:
@@ -301,6 +306,8 @@ def aggregate_pooled_markets(
         raise ValueError("a must lie strictly between zero and one")
     if not 0.0 < phi_v <= 1.0:
         raise ValueError("phi_v must lie in (0, 1]")
+    if not 0.0 <= delta_K <= 1.0:
+        raise ValueError("delta_K must lie in [0, 1]")
 
     n_markets = mask.shape[0]
     omega = exposure_weights(n_markets, weights)
@@ -330,10 +337,12 @@ def aggregate_pooled_markets(
     primary_factor_cost = phi_v * variable_cost
     L = (1.0 - a) * primary_factor_cost / w + overhead_labor
     K = a * primary_factor_cost / R
-    # The resource constraint C = Q - M uses the same population scale as factor
-    # payments and profits. As phi_v → 1, M → 0 and C → Q.
+    # The resource constraint Q = C + M + I uses the same population scale as
+    # factor payments and profits; steady-state investment replaces depreciation,
+    # I = delta_K K. As phi_v → 1, M → 0; with delta_K = 0, C = Q - M.
     M = (1.0 - phi_v) * variable_cost
-    C = Q - M
+    I = delta_K * K
+    C = Q - M - I
     variable_profit = float((solution.sales[mask] - solution.cost[mask]).sum()) * scale
     profits = variable_profit - w * overhead_labor
     return PooledAggregate(
@@ -348,6 +357,7 @@ def aggregate_pooled_markets(
         exposure_weights=omega,
         Q=Q,
         M=float(M),
+        I=float(I),
     )
 
 

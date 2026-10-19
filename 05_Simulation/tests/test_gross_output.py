@@ -95,13 +95,13 @@ def test_aggregate_mu_cw_alpha_is_revenue_over_variable_cost():
     assert moments["mu_cw_alpha"] == pytest.approx(expected)
 
 
-def test_resource_constraint_q_equals_c_plus_m_and_materials_share():
+def test_resource_constraint_q_equals_c_plus_m_plus_i_and_materials_share():
     solution, mask = _batch_and_mask()
     agg = aggregate_pooled_markets(
         solution, mask, eta=ETA, operating_cost_labor=0.0, n_firms_cs=100.0,
-        w=W, R=R, a=A_I, phi_v=PHI_V,
+        w=W, R=R, a=A_I, delta_K=0.06, phi_v=PHI_V,
     )
-    assert agg.Q == pytest.approx(agg.C + agg.M)
+    assert agg.Q == pytest.approx(agg.C + agg.M + agg.I)
     moments = pooled_moments(solution, mask, n_firms_cs=100, phi_v=PHI_V)
     assert moments["materials_share"] == pytest.approx((1.0 - PHI_V) / moments["mu_cw_alpha"])
 
@@ -110,11 +110,30 @@ def test_phi_v_to_one_zeroes_materials():
     solution, mask = _batch_and_mask()
     agg = aggregate_pooled_markets(
         solution, mask, eta=ETA, operating_cost_labor=0.0, n_firms_cs=100.0,
-        w=W, R=R, a=A_I, phi_v=1.0,
+        w=W, R=R, a=A_I, delta_K=0.0, phi_v=1.0,
     )
     assert agg.M == pytest.approx(0.0)
     assert agg.C == pytest.approx(agg.Q)
 
+
+
+def test_consumption_is_net_of_steady_state_investment():
+    """delta_K only diverts I = delta_K K from consumption; every other
+    aggregate is unchanged, and delta_K has no default."""
+    solution, mask = _batch_and_mask()
+    common = dict(
+        eta=ETA, operating_cost_labor=0.0, n_firms_cs=100.0,
+        w=W, R=R, a=A_I, phi_v=PHI_V,
+    )
+    gross = aggregate_pooled_markets(solution, mask, delta_K=0.0, **common)
+    net = aggregate_pooled_markets(solution, mask, delta_K=0.06, **common)
+    for field in ("Q", "M", "K", "L", "P", "profits"):
+        assert getattr(net, field) == getattr(gross, field), field
+    assert gross.I == 0.0
+    assert net.I == pytest.approx(0.06 * net.K)
+    assert net.C == pytest.approx(gross.C - 0.06 * gross.K)
+    with pytest.raises(TypeError):
+        aggregate_pooled_markets(solution, mask, **common)
 
 # ---------------------------------------------------------------------------
 # GE closure with materials netted out of consumption
@@ -133,11 +152,14 @@ def test_ge_consumption_is_net_of_materials():
         market_solver_kwargs={"backend": "vectorized"},
     )
     assert eq.converged
-    # Net consumption C = Q − M with positive materials use; chi = w/C is on the
-    # net-consumption basis. (Walras C = wL+RK+Π is NOT a tight identity in this
+    # Consumption C = Q − M − δK with positive materials use; chi = w/C is on
+    # the net-consumption basis. (Walras C = wL+RK+Π is NOT a tight identity in this
     # pooled+population-scaled implementation (income is population-scaled while
     # the composite is not), so it is left as a diagnostic, not asserted.)
     assert eq.aggregates.M > 0.0
     assert eq.aggregates.C > 0.0
-    assert eq.aggregates.Q == pytest.approx(eq.aggregates.C + eq.aggregates.M)
+    assert eq.aggregates.I == pytest.approx(0.06 * eq.aggregates.K)
+    assert eq.aggregates.Q == pytest.approx(
+        eq.aggregates.C + eq.aggregates.M + eq.aggregates.I
+    )
     assert eq.chi == pytest.approx(eq.w / eq.aggregates.C)

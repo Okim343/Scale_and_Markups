@@ -111,10 +111,13 @@ class PooledEquilibrium:
         return self.aggregates.profits
 
     def walras_check(self) -> dict[str, float]:
+        # Household income wL + RK + Pi buys consumption and replacement
+        # investment I = delta_K K.
         income = self.w * self.L_agg + self.R * self.K_agg + self.Pi_agg
-        gap = abs(self.C - income)
-        return {"C": self.C, "income": income, "abs_gap": gap,
-                "rel_gap": gap / max(abs(self.C), 1e-30)}
+        spending = self.C + self.aggregates.I
+        gap = abs(spending - income)
+        return {"C": self.C, "I": self.aggregates.I, "income": income,
+                "abs_gap": gap, "rel_gap": gap / max(abs(spending), 1e-30)}
 
 
 
@@ -131,6 +134,7 @@ def solve_pooled_economy(
     R: float,
     X_market: float,
     n_firms_cs: float,
+    delta_K: float,
     active_mask: np.ndarray,
     exposure: np.ndarray | None = None,
     K_switch: int = 3,
@@ -163,7 +167,8 @@ def solve_pooled_economy(
     aggregates = aggregate_pooled_markets(
         participation.solution, participation.active_mask, eta=params.eta,
         operating_cost_labor=operating_cost_labor, n_firms_cs=n_firms_cs,
-        w=w, R=R, a=params.a, phi_v=params.phi_v, weights=exposure,
+        w=w, R=R, a=params.a, delta_K=delta_K, phi_v=params.phi_v,
+        weights=exposure,
     )
     active = participation.active_mask
     sales_active = participation.solution.sales[active]
@@ -225,7 +230,8 @@ def solve_full_pool_reference(
         agg = aggregate_pooled_markets(
             solution, mask, eta=params.eta,
             operating_cost_labor=wf / w, n_firms_cs=n_firms_cs,
-            w=w, R=R, a=params.a, phi_v=params.phi_v, weights=exposure,
+            w=w, R=R, a=params.a, delta_K=delta_K, phi_v=params.phi_v,
+            weights=exposure,
         )
         return solution, Ed, wf, agg
 
@@ -285,7 +291,8 @@ def solve_pooled_ge(
         w, X = np.exp(x)
         return solve_pooled_economy(
             alpha, v, params, w=w, R=R, X_market=X,
-            n_firms_cs=n_firms_cs, exposure=exposure, K_switch=K_switch,
+            n_firms_cs=n_firms_cs, delta_K=delta_K, exposure=exposure,
+            K_switch=K_switch,
             love_of_variety=love_of_variety, regime=regime, mu_bar=mu_bar,
             market_solver_kwargs=market_solver_kwargs,
             wf_reference=wf_reference, active_mask=mask,
@@ -361,7 +368,8 @@ def solve_pooled_ge_anchored(
         )
         return solve_pooled_economy(
             alpha, v_min * v_unit, scaled_params, w=w, R=R, X_market=X,
-            n_firms_cs=n_firms_cs, exposure=exposure, K_switch=K_switch,
+            n_firms_cs=n_firms_cs, delta_K=delta_K, exposure=exposure,
+            K_switch=K_switch,
             love_of_variety=love_of_variety, regime=PricingRegime.MARKET,
             market_solver_kwargs=market_solver_kwargs,
             wf_reference=wf_reference, active_mask=selected_mask,

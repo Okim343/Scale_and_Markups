@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en" class="theme-light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Labour Share Benchmark</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script>Chart.defaults.animation = false;</script>
+    <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html.theme-light {
+      --bg: #FBFAF7; --surface: #FFFFFF; --surface-hover: #F3F2EE;
+      --border: rgba(30,30,40,0.10); --border-strong: rgba(30,30,40,0.28);
+      --text: #1d2330; --text-secondary: #6b7280;
+      --accent: #46607e; --accent-secondary: #9a7a42;
+      --positive: #4f7a70; --negative: #9a5b5b; --warning: #a07d3e;
+      --muted: #9aa0a8; --grid: rgba(30,30,40,0.07);
+      --heat-neg: 70,96,126; --heat-pos: 154,122,66;
+    }
+    html.theme-dark {
+      --bg: #14161a; --surface: #1b1e23; --surface-hover: #23272d;
+      --border: rgba(255,255,255,0.09); --border-strong: rgba(255,255,255,0.28);
+      --text: #e6e6e3; --text-secondary: #9aa0a8;
+      --accent: #8fa7c4; --accent-secondary: #d0b07a;
+      --positive: #8fbcb1; --negative: #cf8f8f; --warning: #d0b07a;
+      --muted: #6e747c; --grid: rgba(255,255,255,0.07);
+      --heat-neg: 143,167,196; --heat-pos: 208,176,122;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; -webkit-font-smoothing: antialiased; font-size: 1rem;
+      transition: background 0.3s, color 0.3s;
+    }
+    h1, h2, h3 { color: var(--text); text-wrap: balance; }
+    h1 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; font-size: 2.5rem; letter-spacing: -0.015em; line-height: 1.15; }
+    h2 { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+    h3 { font-size: 0.95rem; font-weight: 500; }
+    p, li, span { color: inherit; }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeInUp 0.6s ease-out both; }
+    .animate.delay-1 { animation-delay: 0.1s; }
+    .animate.delay-2 { animation-delay: 0.2s; }
+    .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+
+    .viz-menu { position: fixed; top: 16px; right: 16px; z-index: 9999; }
+    .viz-menu-toggle { width: 40px; height: 40px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .viz-menu-toggle:hover { background: var(--surface-hover); }
+    .viz-menu-dropdown { position: absolute; top: 48px; right: 0; min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2s; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    .viz-menu-dropdown.open { opacity: 1; visibility: visible; transform: translateY(0); }
+    .viz-menu-dropdown button { width: 100%; padding: 9px 12px; border: none; border-radius: 7px; background: transparent; color: var(--text); font-size: 14px; font-family: inherit; cursor: pointer; text-align: left; }
+    .viz-menu-dropdown button:hover { background: var(--surface-hover); }
+    .skip-to-content { position: absolute; top: -40px; left: 6px; background: var(--accent); color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; z-index: 10000; }
+    .skip-to-content:focus { top: 6px; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 56px 32px 48px; }
+    .head { margin-bottom: 48px; max-width: 900px; }
+    .head .kicker { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 10px; }
+    .head .sub { margin-top: 14px; color: var(--text-secondary); font-size: 1rem; }
+    .head .sub b { color: var(--text); font-weight: 500; }
+
+    .figure { margin-bottom: 56px; padding-top: 40px; border-top: 1px solid var(--border-strong); }
+    .fig-num { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
+    .fig-title { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; font-size: 1.6rem; letter-spacing: -0.01em; line-height: 1.25; text-transform: none; color: var(--text); margin-bottom: 8px; }
+    .fig-lead { font-size: 0.92rem; color: var(--text-secondary); max-width: 880px; margin-bottom: 22px; }
+    .fig-lead b { color: var(--text); font-weight: 500; }
+
+    .panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+    .panels.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .panel h3 { margin-bottom: 2px; }
+    .panel .pnote { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 8px; }
+    .chart-container { position: relative; height: 300px; }
+    .chart-container.tall { height: 470px; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: center; font-size: 0.85rem; color: var(--text-secondary); padding: 12px 0; margin-top: 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .legend span { display: inline-flex; align-items: center; gap: 8px; }
+    .reading { font-size: 0.92rem; margin-top: 14px; max-width: 900px; line-height: 1.6; }
+    .reading em { font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-size: 1.02rem; }
+
+    /* table */
+    .tbl-wrap { overflow-x: auto; }
+    table.res { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.9rem; }
+    table.res th { text-align: left; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); padding: 8px 12px; border-bottom: 1px solid var(--border-strong); vertical-align: bottom; }
+    table.res td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    table.res tr:last-child td { border-bottom: 1px solid var(--border-strong); }
+    table.res td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table.res td.claim { font-family: 'Source Serif 4', Georgia, serif; font-size: 1rem; }
+    table.res .sub { display: block; font-size: 0.8rem; color: var(--text-secondary); }
+    .v { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+    .v.yes { color: var(--positive); }
+    .v.no { color: var(--negative); }
+    .v.part { color: var(--warning); }
+
+    /* heatmap */
+    .heat { display: grid; grid-template-columns: 64px repeat(10, minmax(0, 1fr)); gap: 2px; font-variant-numeric: tabular-nums; }
+    .heat .hd { font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 2px 0; }
+    .heat .rl { font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; white-space: nowrap; }
+    .heat .cell { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--text); border-radius: 2px; cursor: default; }
+    .heat .cell:hover, .heat .cell:focus { outline: 1px solid var(--text); outline-offset: -1px; }
+    .axis-note { font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; text-align: center; }
+    .heat-scale { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.75rem; color: var(--text-secondary); }
+    .heat-scale .bar { height: 8px; width: 160px; border-radius: 1px; }
+    .heat-tip { position: fixed; pointer-events: none; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; padding: 8px 10px; font-size: 0.8rem; box-shadow: 0 6px 18px rgba(0,0,0,0.10); opacity: 0; transition: opacity 0.1s; z-index: 50; max-width: 260px; color: var(--text); }
+
+    .foot { margin-top: 8px; padding-top: 32px; border-top: 1px solid var(--border-strong); }
+    .note-label { font-size: 0.8rem; font-weight: 600; margin-bottom: 12px; }
+    .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px 40px; font-size: 0.875rem; line-height: 1.55; color: var(--text-secondary); }
+    .notes h2 { margin-bottom: 6px; }
+    .notes p + p { margin-top: 6px; }
+    .notes strong { color: var(--text); font-weight: 500; }
+    .notes code, .source code { font-size: 0.85em; }
+    .source { margin-top: 28px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.55; }
+
+    @media print {
+      body { background: white !important; color: black !important; }
+      .viz-menu { display: none !important; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+      .figure { break-inside: avoid; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+    @page { margin: 0.6in; }
+    @media (max-width: 900px) { .panels, .panels.two { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .wrap { padding: 40px 16px; } h1 { font-size: 2rem; } .fig-title { font-size: 1.35rem; }
+      .heat { grid-template-columns: 44px repeat(10, minmax(0, 1fr)); }
+      .heat .cell { height: 34px; font-size: 0.6rem; }
+    }
+    @media (max-width: 375px) { body { overflow-x: hidden; } .heat .cell span { display: none; } }
+  </style>
+
+</head>
+<body>
+  <a href="#main-content" class="skip-to-content">Skip to content</a>
+
+  <div class="viz-menu">
+    <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg>
+    </button>
+    <div class="viz-menu-dropdown" id="vizMenuDropdown">
+      <button onclick="cycleTheme()"><span id="themeLabel">Dark theme</span></button>
+      <button onclick="downloadImage()"><span>Download PNG</span></button>
+      <button onclick="window.print()"><span>Print / PDF</span></button>
+    </div>
+  </div>
+
+  <main id="main-content" role="main" class="wrap">
+
+    <section class="head animate" aria-labelledby="title">
+      <p class="kicker">Orbis Spain &middot; benchmark note &middot; 2015&ndash;2023</p>
+      <h1 id="title">The corporate labour share in Spanish firm data, read against Karabarbounis and Neiman (2014)</h1>
+      <p class="sub">Karabarbounis and Neiman (KN) document a global decline in the <b>corporate labour share</b> and attribute about half of it to <b>cheaper investment goods</b>, with an elasticity of substitution between capital and labour of about 1.25. This note puts our firm-level data on KN's footing: the same labour-share concept, the same income accounting, and the same estimating equation. It asks what the data can add to their argument and where they cannot be used to test it.</p>
+    </section>
+
+    <!-- TABLE 1 -->
+    <section class="figure animate delay-1" aria-labelledby="t1">
+      <p class="fig-num">Table 1</p>
+      <h2 id="t1" class="fig-title">What is being compared</h2>
+      <div class="tbl-wrap">
+        <table class="res">
+          <thead><tr><th style="width:20%"></th><th>Karabarbounis and Neiman (2014)</th><th>This note</th></tr></thead>
+          <tbody>
+            <tr><td class="claim">Unit</td><td>Country (and country &times; industry in KLEMS)</td><td>Firm, aggregated to industry and economy</td></tr>
+            <tr><td class="claim">Sector</td><td>Corporate sector, national accounts</td><td>Spanish non-financial companies filing unconsolidated accounts (Orbis)</td></tr>
+            <tr><td class="claim">Labour share</td><td>Compensation of employees / corporate gross value added</td><td>Staff costs (incl. employer contributions) / gross operating value added</td></tr>
+            <tr><td class="claim">Period</td><td>1975&ndash;2012; trends over 15&ndash;37 years</td><td>2015&ndash;2023; nine years</td></tr>
+            <tr><td class="claim">Identifying variation</td><td>Cross-country differences in long-run trends</td><td>Cross-firm differences within industry &times; year; short industry trends</td></tr>
+            <tr><td class="claim">Investment price</td><td>PWT, WDI, KLEMS relative to consumption</td><td>Eurostat GFCF deflator by NACE section / HICP</td></tr>
+            <tr><td class="claim">Spain in KN</td><td colspan="2">One of the few countries where both the labour share and the relative price of investment rose (their Figures VI and VIII).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FIGURE 1 -->
+    <section class="figure" data-reveal aria-labelledby="f1">
+      <p class="fig-num">Figure 1</p>
+      <h2 id="f1" class="fig-title">The aggregate: firm data against the national accounts</h2>
+      <p class="fig-lead">Panel (a): labour share of Spanish non-financial corporations in the national accounts (KN's definition, D1 / B1G, sector S11), the Orbis aggregate (sum of staff costs over sum of value added), and the Orbis aggregate for the <span id="balFirms"></span> firms observed in every year. Panel (b): Orbis totals as a share of the national-accounts totals.</p>
+      <div class="panels two">
+        <div class="panel"><h3>(a) Labour share of gross value added</h3><p class="pnote">share</p><div class="chart-container"><canvas id="f1a" role="img" aria-label="Labour share of non-financial corporations, national accounts and Orbis, 2008 to 2024"></canvas></div></div>
+        <div class="panel"><h3>(b) Orbis coverage of the corporate sector</h3><p class="pnote">Orbis total / national-accounts total</p><div class="chart-container"><canvas id="f1b" role="img" aria-label="Orbis value added and staff costs as a share of national-accounts totals"></canvas></div></div>
+      </div>
+      <div class="legend" id="f1legend"></div>
+      <p class="reading">The firm data come within <span id="gapEnd"></span> points of the corporate labour share by 2023, and the balanced panel reproduces its year-to-year movements, including the 2020 jump. They do not reproduce the trend: <span id="trAll"></span> points per decade in the full Orbis sample against <span id="trNA"></span> in the national accounts, because Orbis coverage of value added climbs from <span id="covStart"></span> to <span id="covEnd"></span>. In the balanced panel the trend is <span id="trBal"></span> points per decade. <em>The firm data can describe the cross-section; they cannot measure the trend KN study.</em></p>
+    </section>
+
+    <!-- FIGURE 2 -->
+    <section class="figure" data-reveal aria-labelledby="f2">
+      <p class="fig-num">Figure 2</p>
+      <h2 id="f2" class="fig-title">From firms to the aggregate</h2>
+      <p class="fig-lead">Labour share of value added across firms with positive value added, each year: unweighted mean and median, and the value-added-weighted mean, which is the aggregate KN observe. The gap between the weighted and unweighted means is the Olley&ndash;Pakes covariance between firm size and the labour share.</p>
+      <div class="panels two">
+        <div class="panel"><h3>(a) Firm-level labour share</h3><p class="pnote">share</p><div class="chart-container"><canvas id="f2a" role="img" aria-label="Mean, median and value-added-weighted labour share across firms, 2015 to 2023"></canvas></div></div>
+        <div class="panel"><h3>(b) Labour share by size decile</h3><p class="pnote">aggregate within decile, 2015&ndash;2023</p><div class="chart-container"><canvas id="f2b" role="img" aria-label="Labour share of value added by revenue decile"></canvas></div></div>
+      </div>
+      <div class="legend" id="f2legend"></div>
+      <p class="reading">The average firm pays out about <span id="mAvg"></span> of its value added in wages, but the aggregate share is about <span id="wAvg"></span>: the covariance term is about <span id="covAvg"></span> points in every year. The aggregate KN study is therefore set by the large firms. A decline in it can come from falling labour shares within firms or from activity moving towards large, low-share firms. KN's within-industry finding does not separate the two, because reallocation across firms within an industry is still within the industry.</p>
+    </section>
+
+    <!-- FIGURE 3 -->
+    <section class="figure" data-reveal aria-labelledby="f3">
+      <p class="fig-num">Figure 3</p>
+      <h2 id="f3" class="fig-title">KN's income accounting across firm size</h2>
+      <p class="fig-lead">KN write the labour share as <b>s<sub>L</sub> = (1/&mu;) &times; s<sub>L</sub><sup>cost</sup></b>, the inverse markup times the labour share of costs, with capital costs R&middot;K (their equations 11&ndash;13). Capital is book tangible fixed assets. <b>R</b> = 1/&beta; &minus; 1 + &delta; with KN's &beta; = 0.91 and &delta; = 0.10 (R &asymp; <span id="Rkn"></span>), and a lower alternative R = <span id="Rlow"></span>. Deciles are revenue deciles within 4-digit industry &times; year; D1 is omitted because its staff costs exceed its value added.</p>
+      <div class="panels two">
+        <div class="panel"><h3>(a) Labour share and its two factors</h3><p class="pnote">KN rental rate</p><div class="chart-container"><canvas id="f3a" role="img" aria-label="Labour share, labour share of costs and inverse markup by revenue decile"></canvas></div></div>
+        <div class="panel"><h3>(b) Implied markup &mu; = 1 / (s<sub>L</sub> + s<sub>K</sub>)</h3><p class="pnote">two rental rates</p><div class="chart-container"><canvas id="f3b" role="img" aria-label="Implied markup by revenue decile under two rental rates"></canvas></div></div>
+      </div>
+      <div class="legend" id="f3legend"></div>
+      <p class="reading">From the fourth decile up, the labour share falls from <span id="sL4"></span> to <span id="sL10"></span>, while the labour share of costs barely moves (<span id="c4"></span> to <span id="c10"></span>). In KN's accounting, <span id="mkShare"></span> of the fall (in logs) is the markup term; with the lower rental rate the figure is <span id="mkShareLow"></span>. <em>Across firms, the low labour share of large firms is a profit share, not a capital share.</em> Below the fourth decile both factors move with size. The markup levels depend on R and on book capital; the gradient from D4 up does not.</p>
+    </section>
+
+    <!-- FIGURE 4 -->
+    <section class="figure" data-reveal aria-labelledby="f4">
+      <p class="fig-num">Figure 4</p>
+      <h2 id="f4" class="fig-title">KN's estimating equation across Spanish industries</h2>
+      <p class="fig-lead">KN equation (19): the trend in the labour share scaled by 1/(1 &minus; s<sub>L</sub>) against the trend in the log relative price of investment, both per decade &times; 100, across <span id="nSec"></span> NACE sections, 2015&ndash;2023. The slope equals &sigma; &minus; 1. Labour shares are Orbis aggregates by section; investment prices are Eurostat GFCF deflators over the HICP. Financial activities, real estate and public administration are excluded.</p>
+      <div class="panels two">
+        <div class="panel"><h3>(a) Industries</h3><p class="pnote">per decade &times; 100</p><div class="chart-container tall"><canvas id="f4a" role="img" aria-label="Scatter of labour share trends against investment price trends by NACE section"></canvas></div></div>
+        <div class="panel"><h3>(b) Estimates of &sigma; &minus; 1</h3><p class="pnote">point estimate and 95% interval</p><div class="chart-container tall"><canvas id="f4b" role="img" aria-label="Slope estimates with confidence intervals compared with KN"></canvas></div></div>
+      </div>
+      <div class="legend" id="f4legend"></div>
+      <p class="reading">The value-added-weighted slope is <span id="bW"></span> with a 95% interval of <span id="ciW"></span>, so the data cannot distinguish KN's 0.28 (&sigma; = 1.28) from zero or from much larger values. The relative price of investment in Spain <em>rose</em> by <span id="xiTot"></span>% per decade over this window; at &sigma; = 1.25 KN's mechanism predicts a labour share change of only <span id="knPred"></span> points per decade, against <span id="trNA2"></span> in the national accounts. Over 2015&ndash;2023 the KN channel is quantitatively negligible in Spain.</p>
+    </section>
+
+    <!-- TABLE 2 -->
+    <section class="figure" data-reveal aria-labelledby="t2">
+      <p class="fig-num">Table 2</p>
+      <h2 id="t2" class="fig-title">What these data can and cannot say about KN</h2>
+      <div class="panels two">
+        <div class="panel">
+          <h2 style="margin-bottom:10px">Can say</h2>
+          <table class="res" style="min-width:0">
+            <tbody>
+              <tr><td><b>Level and short-run movements.</b> Orbis comes within 2&ndash;5 points of the national-accounts corporate labour share from 2020, and the balanced panel reproduces its 2020 jump. Orbis covers 53&ndash;60% of corporate value added from 2016 (43% in 2015).</td></tr>
+              <tr><td><b>Aggregation.</b> The aggregate is roughly 15 points below the typical firm's labour share; large firms set it.</td></tr>
+              <tr><td><b>Accounting by size.</b> Under KN's own identity, the lower labour share of large firms is almost entirely the markup term, for either rental rate.</td></tr>
+              <tr><td><b>KN's channel in this window.</b> Spanish investment prices rose relative to consumption, so the capital-price channel cannot have lowered the labour share after 2015.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h2 style="margin-bottom:10px">Cannot say</h2>
+          <table class="res" style="min-width:0">
+            <tbody>
+              <tr><td><b>The elasticity &sigma;.</b> Nine years and 16 sections give an interval far too wide; KN use 15&ndash;37-year trends across up to 129 country-industry pairs.</td></tr>
+              <tr><td><b>The trend in the labour share.</b> Changing Orbis coverage moves the full-sample trend; the balanced panel is not representative of entry.</td></tr>
+              <tr><td><b>Markup levels.</b> They depend on R, on book capital (historical cost, land) and on leased capital being off the balance sheet.</td></tr>
+              <tr><td><b>Technology versus market power.</b> A cross-section cannot separate capital-augmenting technology or &sigma; from markups; the size result is an accounting statement, not a causal one.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="foot" data-reveal aria-label="Notes and sources">
+      <p class="note-label">Note:</p>
+      <div class="notes">
+        <div>
+          <h2>Sample</h2>
+          <p>Spanish unconsolidated accounts 2015&ndash;2023, all non-financial industries (finance and public administration excluded), nature-of-expense accounts with reported depreciation: <span id="nObs"></span> firm-years, <span id="nFirms"></span> firms. Firm-level shares (Figure 2a) use firms with positive value added and trim the 1% tails of the labour share.</p>
+        </div>
+        <div>
+          <h2>Value added</h2>
+          <p>Gross operating value added = operating revenue &minus; materials &minus; other external costs (Orbis other operating expenses net of staff costs and depreciation). It excludes other taxes on production, which sit in other external costs; in the national accounts, moving to factor cost changes the labour share by less than 0.5 points.</p>
+        </div>
+        <div>
+          <h2>Estimation</h2>
+          <p>Trends are OLS slopes on year, per decade. Figure 4 reports value-added-weighted and unweighted least squares with heteroskedasticity-robust standard errors; KN use robust regression across countries. KN's predicted change is (1 &minus; s<sub>L</sub>)(&sigma; &minus; 1) times the investment-price trend.</p>
+        </div>
+      </div>
+      <p class="source"><strong style="color:var(--text);font-weight:500">Source:</strong> Karabarbounis, L. and B. Neiman (2014), &ldquo;The Global Decline of the Labor Share,&rdquo; <em>Quarterly Journal of Economics</em> 129(1), 61&ndash;103. Orbis (Bureau van Dijk) via WRDS; Eurostat <code>nasa_10_nf_tr</code> (sector S11), <code>nama_10_a64_p5</code> (GFCF deflators) and <code>prc_hicp_aind</code>. Scripts in <code>03_Empirical/02_Orbis/06_Age_Size/01_code/</code> (05 and 06).</p>
+    </section>
+  </main>
+
+  <script>
+    var KN = __KN__;
+
+    function toggleMenu() { var d = document.getElementById('vizMenuDropdown'); if (d) d.classList.toggle('open'); }
+    document.addEventListener('click', function(e) { if (!e.target.closest('.viz-menu')) { var d = document.getElementById('vizMenuDropdown'); if (d) d.classList.remove('open'); } });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { var d = document.getElementById('vizMenuDropdown'); if (d) d.classList.remove('open'); } });
+
+    var savedTheme = null;
+    try { savedTheme = localStorage.getItem('viz-theme'); } catch (e) {}
+    var currentTheme = savedTheme || 'light';
+    function applyTheme(t) {
+      document.documentElement.className = 'theme-' + t;
+      document.getElementById('themeLabel').textContent = t === 'dark' ? 'Light theme' : 'Dark theme';
+      try { localStorage.setItem('viz-theme', t); } catch (e) {}
+      currentTheme = t;
+      if (typeof onThemeChange === 'function') onThemeChange();
+    }
+    function cycleTheme() { applyTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
+
+    document.querySelectorAll('[data-reveal]').forEach(function(el) { el.classList.add('reveal'); });
+    var revealObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
+    }, { threshold: 0.05 });
+    document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
+
+    async function downloadImage() {
+      var menu = document.querySelector('.viz-menu'); menu.style.display = 'none';
+      try {
+        var url = await htmlToImage.toPng(document.body, { pixelRatio: 2, backgroundColor: getComputedStyle(document.body).backgroundColor });
+        var a = document.createElement('a'); a.href = url; a.download = 'orbis-labour-share-kn.png'; a.click();
+      } catch (e) { console.error('Download failed:', e); }
+      menu.style.display = '';
+    }
+
+    // ===== helpers =====
+    function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+    var FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    function sgn(v, dp) { return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(dp); }
+    function pct(v, dp) { return (100 * v).toFixed(dp == null ? 0 : dp) + '%'; }
+    function set(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; }
+    var SEC = { A: 'Agriculture', B: 'Mining', C: 'Manufacturing', D: 'Electricity and gas', E: 'Water and waste', F: 'Construction',
+      G: 'Wholesale and retail', H: 'Transport', I: 'Accommodation and food', J: 'Information', M: 'Professional services',
+      N: 'Administrative services', P: 'Education', Q: 'Health', R: 'Arts and recreation', S: 'Other services' };
+    function legend(id, items) {
+      document.getElementById(id).innerHTML = items.map(function(it) {
+        var sw = it.dot ? '<svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="' + it.c + '"/></svg>'
+          : '<svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="' + it.c + '" stroke-width="' + (it.w || 2) + '"' + (it.dash ? ' stroke-dasharray="5 4"' : '') + '/></svg>';
+        return '<span>' + sw + it.t + '</span>';
+      }).join('');
+    }
+    function tip() {
+      return { enabled: true, padding: 10, cornerRadius: 6, backgroundColor: css('--surface'), titleColor: css('--text'), bodyColor: css('--text'),
+        borderColor: css('--border-strong'), borderWidth: 1, titleFont: { family: FONT, size: 12, weight: '600' }, bodyFont: { family: FONT, size: 12 } };
+    }
+    function axes(xTitle, yFmt, extraY) {
+      var tc = css('--text-secondary');
+      return {
+        x: { ticks: { color: tc, maxRotation: 0, autoSkip: true, maxTicksLimit: 9, font: { family: FONT, size: 11 } }, grid: { display: false }, border: { color: css('--border-strong') }, title: { display: !!xTitle, text: xTitle, color: tc, font: { family: FONT, size: 11 } } },
+        y: Object.assign({ ticks: { color: tc, maxTicksLimit: 6, font: { family: FONT, size: 11 }, callback: yFmt }, grid: { color: css('--grid') }, border: { display: false } }, extraY || {})
+      };
+    }
+    var charts = {};
+    function make(id, cfg) {
+      if (typeof Chart === 'undefined') { console.error('Chart.js not loaded'); return; }
+      if (charts[id]) { try { charts[id].destroy(); } catch (e) {} }
+      var el = document.getElementById(id); if (!el) return;
+      charts[id] = new Chart(el, cfg);
+    }
+    function line(label, data, color, opts) {
+      return Object.assign({ label: label, data: data, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: 2.5, pointHoverRadius: 4, tension: 0.15, spanGaps: false }, opts || {});
+    }
+
+    // ===== text numbers =====
+    (function() {
+      var A = KN.agg, G = KN.aggr, C = KN.acct, R = KN.reg;
+      set('nObs', KN.N.toLocaleString('en-US')); set('nFirms', KN.firms.toLocaleString('en-US'));
+      set('balFirms', A.bal_firms.toLocaleString('en-US'));
+      set('gapEnd', (100 * (A.orbis[8] - A.na[8])).toFixed(1));
+      set('trAll', sgn(A.trend_orbis, 1)); set('trNA', sgn(A.trend_na, 1)); set('trBal', sgn(A.trend_orbis_bal, 1));
+      set('covStart', pct(A.cov_va[0])); set('covEnd', pct(A.cov_va[8]));
+      var mean = function(a) { return a.reduce(function(s, v) { return s + v; }, 0) / a.length; };
+      set('mAvg', pct(mean(G.mean))); set('wAvg', pct(mean(G.wmean))); set('covAvg', sgn(100 * mean(G.cov), 0));
+      set('Rkn', KN.acct.R_kn.toFixed(2)); set('Rlow', KN.acct.R_low.toFixed(2));
+      var k = C.size.kn, l = C.size.low;
+      set('sL4', k.sL[3].toFixed(2)); set('sL10', k.sL[9].toFixed(2)); set('c4', k.sL_cost[3].toFixed(2)); set('c10', k.sL_cost[9].toFixed(2));
+      var share = function(s) { return Math.log(s.mu[9] / s.mu[3]) / -Math.log(s.sL[9] / s.sL[3]); };
+      set('mkShare', pct(share(k))); set('mkShareLow', pct(share(l)));
+      set('nSec', R.points.length);
+      set('bW', R.wls.slope.toFixed(2)); set('ciW', '[' + sgn(R.wls.slope - 1.96 * R.wls.se, 1) + ', ' + sgn(R.wls.slope + 1.96 * R.wls.se, 1) + ']');
+      set('xiTot', sgn(R.trend_rel_price_total, 1));
+      set('knPred', sgn((1 - mean(A.na)) * 0.25 * R.trend_rel_price_total, 1)); set('trNA2', sgn(A.trend_na, 1));
+    })();
+
+    // ===== figures =====
+    function buildF1() {
+      var A = KN.agg, yrs = A.na_years_long, idx = function(y) { return A.years.indexOf(y); };
+      var pick = function(arr) { return yrs.map(function(y) { var i = idx(y); return i < 0 ? null : arr[i]; }); };
+      var cNA = css('--text'), cO = css('--accent'), cB = css('--accent-secondary');
+      make('f1a', { type: 'line', data: { labels: yrs, datasets: [
+          line('National accounts, S11', A.na_long, cNA, { pointRadius: 2 }),
+          line('Orbis, all firms', pick(A.orbis), cO),
+          line('Orbis, balanced panel', pick(A.orbis_bal), cB, { borderDash: [5, 4], pointRadius: 2 })
+        ] }, options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: function(c) { return c.parsed.y == null ? null : ' ' + c.dataset.label + ': ' + pct(c.parsed.y, 1); } } }) },
+          scales: axes('', function(v) { return pct(v); }) } });
+      make('f1b', { type: 'line', data: { labels: A.years, datasets: [
+          line('Value added', A.cov_va, cO), line('Staff costs', A.cov_l, cB, { borderDash: [5, 4] })
+        ] }, options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + pct(c.parsed.y, 1) + ' of national accounts'; } } }) },
+          scales: axes('', function(v) { return pct(v); }, { min: 0, max: 1 }) } });
+      legend('f1legend', [{ c: cNA, t: 'National accounts, non-financial corporations (KN definition)' }, { c: cO, t: 'Orbis, all firms; (b) value added' },
+        { c: cB, t: 'Orbis, balanced panel; (b) staff costs', dash: true }]);
+    }
+    function buildF2() {
+      var G = KN.aggr, A = KN.agg, C = KN.acct;
+      var cM = css('--muted'), cO = css('--accent'), cB = css('--accent-secondary');
+      make('f2a', { type: 'line', data: { labels: A.years, datasets: [
+          line('Unweighted mean', G.mean, cB), line('Median', G.median, cM, { borderDash: [5, 4] }), line('Value-added weighted (aggregate)', G.wmean, cO)
+        ] }, options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + pct(c.parsed.y, 1); },
+            afterBody: function(it) { return 'Covariance term: ' + sgn(100 * G.cov[it[0].dataIndex], 1) + ' points'; } } }) },
+          scales: axes('', function(v) { return pct(v); }, { min: 0.5, max: 1 }) } });
+      var s = C.size.kn, labels = C.size.rows.map(function(d) { return 'D' + d; }).slice(1);
+      make('f2b', { type: 'bar', data: { labels: labels, datasets: [{ label: 'Labour share', data: s.sL.slice(1), backgroundColor: cO, barPercentage: 0.7 }] },
+        options: { responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: function(c) { return ' Labour share: ' + pct(c.parsed.y, 1); },
+            afterLabel: function(c) { return C.size.n[c.dataIndex + 1].toLocaleString('en-US') + ' firm-years'; } } }) },
+          scales: axes('Revenue decile (D1 omitted)', function(v) { return pct(v); }, { min: 0 }) } });
+      legend('f2legend', [{ c: cB, t: 'Unweighted mean' }, { c: cM, t: 'Median', dash: true }, { c: cO, t: 'Value-added weighted (= aggregate); (b) decile aggregate' }]);
+    }
+    function buildF3() {
+      var C = KN.acct, k = C.size.kn, l = C.size.low, labels = C.size.rows.map(function(d) { return 'D' + d; }).slice(1);
+      var cO = css('--accent'), cB = css('--accent-secondary'), cP = css('--negative'), cM = css('--muted');
+      var inv = k.mu.map(function(m) { return 1 / m; });
+      make('f3a', { type: 'line', data: { labels: labels, datasets: [
+          line('Labour share s_L', k.sL.slice(1), cO), line('Labour share of costs', k.sL_cost.slice(1), cB, { borderDash: [5, 4] }), line('Inverse markup 1/μ', inv.slice(1), cP)
+        ] }, options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + c.parsed.y.toFixed(3); } } }) },
+          scales: axes('Revenue decile', function(v) { return v.toFixed(1); }) } });
+      make('f3b', { type: 'line', data: { labels: labels, datasets: [
+          line('KN rental rate (R ≈ ' + C.R_kn.toFixed(2) + ')', k.mu.slice(1), cO), line('Lower rental rate (R = ' + C.R_low.toFixed(2) + ')', l.mu.slice(1), cM, { borderDash: [5, 4] })
+        ] }, options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + c.parsed.y.toFixed(3); } } }) },
+          scales: axes('Revenue decile', function(v) { return v.toFixed(1); }) } });
+      legend('f3legend', [{ c: cO, t: '(a) labour share; (b) markup, KN rental rate' }, { c: cB, t: '(a) labour share of costs', dash: true },
+        { c: cP, t: '(a) inverse markup 1/μ' }, { c: cM, t: '(b) markup, lower rental rate', dash: true }]);
+    }
+    function buildF4() {
+      var R = KN.reg, P = R.points, cO = css('--accent'), cB = css('--accent-secondary'), cT = css('--text');
+      var xs = P.map(function(p) { return p.x; }), x0 = Math.floor(Math.min.apply(null, xs) / 2) * 2 - 2, x1 = Math.ceil(Math.max.apply(null, xs) / 2) * 2 + 2;
+      var wx = 0, wy = 0; P.forEach(function(p) { wx += p.x; wy += p.y; }); wx /= P.length; wy /= P.length;
+      var fit = function(a, b) { return [{ x: x0, y: a + b * x0 }, { x: x1, y: a + b * x1 }]; };
+      var labelPlugin = { id: 'lbl', afterDatasetsDraw: function(ch) {
+        var meta = ch.getDatasetMeta(0), c = ch.ctx; c.save(); c.font = '11px ' + FONT; c.fillStyle = css('--text-secondary');
+        meta.data.forEach(function(pt, i) { c.fillText(P[i].sec, pt.x + 6, pt.y + 4); }); c.restore();
+      } };
+      make('f4a', { type: 'scatter', plugins: [labelPlugin], data: { datasets: [
+          { label: 'Sections', data: P.map(function(p) { return { x: p.x, y: p.y }; }), backgroundColor: cO, pointRadius: 4.5, pointHoverRadius: 6 },
+          { label: 'Fit, VA-weighted', type: 'line', data: fit(R.wls.const, R.wls.slope), borderColor: cO, borderWidth: 1.5, pointRadius: 0 },
+          { label: 'KN slope 0.28 through the mean', type: 'line', data: [{ x: x0, y: wy + R.kn_slope * (x0 - wx) }, { x: x1, y: wy + R.kn_slope * (x1 - wx) }], borderColor: cB, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 }
+        ] }, options: { responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { filter: function(it) { return it.datasetIndex === 0; }, callbacks: {
+            title: function(it) { var p = P[it[0].dataIndex]; return p.sec + ' ' + SEC[p.sec]; },
+            label: function(c) { var p = P[c.dataIndex]; return [' Investment price trend: ' + sgn(p.x, 1), ' Labour share term: ' + sgn(p.y, 1), ' Mean labour share: ' + pct(p.sL)]; } } }) },
+          scales: { x: { type: 'linear', min: x0, max: x1, ticks: { color: css('--text-secondary'), font: { family: FONT, size: 11 } }, grid: { display: false }, border: { color: css('--border-strong') }, title: { display: true, text: 'Trend in log relative price of investment', color: css('--text-secondary'), font: { family: FONT, size: 11 } } },
+            y: { ticks: { color: css('--text-secondary'), font: { family: FONT, size: 11 } }, grid: { color: css('--grid') }, border: { display: false }, title: { display: true, text: 'Trend in labour share / (1 − s_L)', color: css('--text-secondary'), font: { family: FONT, size: 11 } } } } } });
+      var est = [['This note, VA-weighted', R.wls], ['This note, unweighted', R.ols], ['KN Table I (i), countries', { slope: 0.25, se: 0.08 }]];
+      var lo = est.map(function(e) { return e[1].slope - 1.96 * e[1].se; }), hi = est.map(function(e) { return e[1].slope + 1.96 * e[1].se; });
+      make('f4b', { type: 'bar', plugins: [{ id: 'zero', beforeDatasetsDraw: function(ch) { var x = ch.scales.x.getPixelForValue(0), A = ch.chartArea, c = ch.ctx; c.save(); c.strokeStyle = css('--border-strong'); c.beginPath(); c.moveTo(x, A.top); c.lineTo(x, A.bottom); c.stroke(); c.restore(); } }],
+        data: { labels: est.map(function(e) { return e[0]; }), datasets: [
+          { label: '95% interval', data: est.map(function(e, i) { return [lo[i], hi[i]]; }), backgroundColor: [css('--accent') + '55', css('--accent') + '33', css('--accent-secondary') + '66'], borderColor: [cO, cO, cB], borderWidth: 1, barPercentage: 0.35 },
+          { label: 'Estimate', type: 'scatter', data: est.map(function(e, i) { return { x: e[1].slope, y: e[0] }; }), backgroundColor: cT, pointRadius: 5 }
+        ] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: function(c) { var i = c.dataIndex; return ' σ − 1 = ' + est[i][1].slope.toFixed(2) + ' [' + lo[i].toFixed(2) + ', ' + hi[i].toFixed(2) + '], σ = ' + (1 + est[i][1].slope).toFixed(2); } } }) },
+          scales: { x: { ticks: { color: css('--text-secondary'), font: { family: FONT, size: 11 } }, grid: { color: css('--grid') }, border: { display: false }, title: { display: true, text: 'σ − 1', color: css('--text-secondary'), font: { family: FONT, size: 11 } } },
+            y: { ticks: { color: css('--text'), font: { family: FONT, size: 11.5 } }, grid: { display: false }, border: { color: css('--border-strong') } } } } });
+      legend('f4legend', [{ c: cO, t: 'NACE sections and value-added-weighted fit', dot: true }, { c: cB, t: 'KN slope (0.28, their Figure VIII) through the mean', dash: true }]);
+    }
+
+    var chartsBuilt = false;
+    function buildCharts() { if (typeof Chart === 'undefined') { console.error('Chart.js not loaded'); return; } buildF1(); buildF2(); buildF3(); buildF4(); chartsBuilt = true; }
+    function onThemeChange() { if (chartsBuilt) setTimeout(buildCharts, 30); }
+    applyTheme(currentTheme);
+    document.addEventListener('DOMContentLoaded', buildCharts);
+  </script>
+</body>
+</html>

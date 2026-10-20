@@ -32,6 +32,7 @@ Run from this folder; every script takes `--config` (default `config_simulation.
 python 01_simulate.py [--M 500] [--seed S] [--out-dir D]
 python 02_welfare.py  [--M 300] [--seed S] [--out-dir D]
 python 03_fixed_input_welfare.py [--M 400] [--seed S] [--out-dir D] [--skip-full-planner] [--skip-fixed-k]
+python 04_sorting_sweep.py [--M 400] [--seed S] [--out-dir D] [--fig-dir D] [--welfare-ref-dir D] [--fixed-input-ref-dir D] [--grid r1,r2] [--labels a,b] [--validation-only]
 python -m orbis_model.figures.simulation_figures --results-dir out_results [--window 2015_2019]
 ```
 
@@ -40,6 +41,7 @@ python -m orbis_model.figures.simulation_figures --results-dir out_results [--wi
 | `01_simulate.py` | draws the common random numbers at the params vector (frozen `v_min`), solves the pooled GE (P = 1, L = 1) on the exogenous Poisson mask | `sim_panel_<window>.parquet` (firm panel), `sim_moments_<window>.parquet`, `sim_economy_moments_<window>.yaml`, `simulate_manifest_<window>.yaml` |
 | `02_welfare.py` | market and planner allocations on common draws and mask, uniform-markup allocation at mu_bar = market `mu_cw`, two-channel decomposition | `welfare_<window>.yaml`, `welfare_decomposition_<window>.parquet`, `sim_panel_market_<window>.parquet`, `sim_panel_planner_<window>.parquet`, `welfare_manifest_<window>.yaml` |
 | `03_fixed_input_welfare.py` | fixed-input planner chain ME -> PE_I -> PE_K -> PE on the draws and mask of `02_welfare.py` (see below) | in `fixed_input/`: `fixed_input_regimes_<window>.parquet`, `fixed_input_welfare_<window>.yaml`, `sim_panel_planner_fixed_input_<window>.parquet`, `sim_panel_planner_fixed_k_<window>.parquet`, `fixed_input_manifest_<window>.yaml` |
+| `04_sorting_sweep.py` | both welfare lenses across alpha<->v arrangements: copula re-draws over rho_bar, within-sector permutations, homogeneous alpha (see below) | in `sorting/`: `sorting_economies.parquet`, `sorting.yaml`, `results.md`, `validation.json`, `checkpoint_<label>.json`; `out_figs/sorting/sorting_curve.{pdf,png}` |
 | `orbis_model/figures/simulation_figures.py` | lambda-contribution heatmap and markup distribution from the welfare outputs | `out_figs/welfare/<tag>/` |
 
 Every manifest records the bundle sha256s, the bundle manifest sha256, the config sha256, the params file
@@ -80,6 +82,33 @@ capital rent `(R - R_euler) K` (already inside RK). The budget is not tight in a
 C + I is exactly `sales - Q` (`aggregation_gap`), because every market spends the common `X_market`
 rather than its CES demand share; `closure_residual` is zero up to rounding.
 
+## Sorting sweep
+
+`04_sorting_sweep.py` ports `04_Code/counterfactuals/sorting_curve` (code only). On the draws, seed and
+Poisson mask of `02_welfare.py`, each arrangement solves ME, PE_I, PE_K and PE
+(`solve_fixed_input_chain`) and the uniform-markup U (`two_channel_decomposition`, mu_bar = that
+arrangement's market `mu_cw`), and reports Lens A (`realloc`, `materials`, `capital`) and Lens B (`disp`,
+`level`), with `Delta = (1 - beta)(W_b - W_a)` summing exactly to `Delta_total` in each lens. chi is frozen
+at the baseline market value; `v_min` and `y_hat` stay at the calibration. The default plan:
+
+| Labels | Kind | Arrangement |
+|---|---|---|
+| `baseline` | copula | the calibrated draw |
+| `rho_<r>`, r in {-0.9, -0.6, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9} | copula | `draw_pool` at rho_bar = r, same seed: alpha, tilde_alpha, eps and the mask are common random numbers (asserted bitwise); v is equal in distribution only |
+| `reverse`, `shuffle_0`, `shuffle_1`, `sorted` | permutation | within-sector pairings of the baseline draw; both marginals bitwise identical (asserted) |
+| `hom_sector`, `hom_cost` | homogeneous | sector harmonic mean of alpha; one economy-wide cost-weighted harmonic mean at the baseline ME |
+
+The baseline runs first and must reproduce the `02_welfare.py` and `03_fixed_input_welfare.py` outputs at
+the same M, seed and params file (their manifests are checked before any solve) to relative tolerance
+1e-6, or the run stops with `validation.json`. Every arrangement asserts convergence, L = 1 within 1e-4,
+the fixed K and M targets, the uniform markup, the consumption-versus-welfare gap and both lens
+identities (1e-12), and is checkpointed atomically; a rerun resumes only if inputs and solver code are
+unchanged (`run_manifest.json`). `sorting.yaml:summary` holds the sorting split
+`Delta_base = Delta_hom + (Delta_shuf - Delta_hom) + (Delta_base - Delta_shuf)`, secant slopes of the copula
+curve and the gaps of the permutation points to it. Smoke runs need references at the same M, e.g.
+`02_welfare.py --M 400 --out-dir out_results/smoke_sorting_ref` and the matching `03` call, passed via
+`--welfare-ref-dir` and `--fixed-input-ref-dir`.
+
 ## Package layout
 
 ```
@@ -91,6 +120,7 @@ orbis_model/
                    normalization, participation, aggregator (pooled moments incl. the RTS gap)
   simulation/      cross_section, moments
   welfare/         allocations, welfare_metrics, fixed_input (fixed-input planner chain)
+  counterfactuals/ sorting (alpha arrangements, per-arrangement solve and gate, readout)
   figures/         house_style, simulation_figures
 ```
 
@@ -111,9 +141,12 @@ the cluster copy, not the local config: edit both. Run python directly, not via 
 `04_Estimation/cluster/sync_to_marvin2.sh`; submit from this folder with `sbatch cluster/submit_welfare.sh`
 after the calibration job. The lab workstation scripts (`submit_*_workstation.sh`) read
 `cluster/config_simulation_workstation.yaml`; `submit_fixed_input_workstation.sh M [OUT_DIR]` runs
-`03_fixed_input_welfare.py` (24 CPUs, 64G).
+`03_fixed_input_welfare.py` (24 CPUs, 64G); `submit_sorting_workstation.sh M [OUT_DIR]` reruns
+`02_welfare.py` and `03_fixed_input_welfare.py` as gate references (skip with `SKIP_REFS=1`) and then
+`04_sorting_sweep.py` (24 CPUs, 64G; about 1.5 to 2 h at M = 10000).
 
 ## Not ported yet
 
 The counterfactual packages of `04_Code/counterfactuals/` will be ported later, apart from
-`fixed_input_welfare` (now `03_fixed_input_welfare.py`).
+`fixed_input_welfare` (now `03_fixed_input_welfare.py`) and `sorting_curve` with the permutation and
+homogeneous-alpha parts of `scalability_sorting` and `homogeneous_rts` (now `04_sorting_sweep.py`).

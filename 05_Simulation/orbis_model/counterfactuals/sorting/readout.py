@@ -1,9 +1,8 @@
 """Sorting-sweep figure, summary yaml and a source-keyed results.md.
 
 Ported from ``04_Code/counterfactuals/sorting_curve/figure.py``. The curve is
-the copula family (one solved economy per ``rho_bar``); permutation points
-(bitwise-identical marginals) are overlaid as hollow markers. Homogeneous-alpha
-economies enter the summary and the table, not the figure.
+the copula sweep only (one solved economy per ``rho_bar``). Permutation and
+homogeneous-alpha economies enter the summary and the table, not the figure.
 """
 
 from __future__ import annotations
@@ -114,7 +113,6 @@ def plot_curve(df: pd.DataFrame, fig_stem: Path) -> bool:
     curve = copula_curve(df)
     if len(curve) < 2:
         return False
-    perm = df[df.kind.eq("permutation")]
     base = df.set_index("label").loc["baseline"]
     configure_style()
     fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.6), sharey=True)
@@ -122,18 +120,56 @@ def plot_curve(df: pd.DataFrame, fig_stem: Path) -> bool:
         for leg in legs:
             ax.plot(curve.corr_av, curve[f"lambda_{leg}"], "-o", color=COLORS[leg], linewidth=2.0,
                     markersize=5.5, markeredgecolor="white", label=NAMES[leg])
-            ax.scatter(perm.corr_av, perm[f"lambda_{leg}"], s=42, facecolors="none",
-                       edgecolors=COLORS[leg], linewidths=1.4, zorder=4)
         ax.axvline(base.corr_av, color="0.55", linestyle="--", linewidth=1.2)
         ax.text(base.corr_av, 1.0, " calibrated", transform=ax.get_xaxis_transform(),
                 ha="left", va="top", fontsize=10, color="0.35")
         ax.set_title(title, loc="left", fontsize=13)
         ax.set_xlabel(r"$\mathrm{corr}(\alpha,\nu)$ over active firms", fontsize=12)
         style_axes(ax, y_as_percent=True)
-        ax.scatter([], [], s=42, facecolors="none", edgecolors="0.3", linewidths=1.4,
-                   label="Permutations")
         ax.legend(loc="upper left", frameon=False, fontsize=10)
     axes[0].set_ylabel(r"Consumption-equivalent $\lambda$", fontsize=12)
+    save_pdf_and_png(fig, fig_stem)
+    plt.close(fig)
+    return True
+
+
+def plot_levels(df: pd.DataFrame, fig_stem: Path) -> bool:
+    """ln C of the market and the planner relative to the baseline, against corr(alpha, v).
+
+    With L = 1 and chi frozen, welfare is ln C / (1 - beta) up to a constant common to
+    all arrangements, so the vertical gap between the two lines minus its baseline
+    value is the change in Delta_total.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from ...figures.house_style import configure_style, save_pdf_and_png, style_axes
+
+    curve = copula_curve(df)
+    if len(curve) < 2:
+        return False
+    perm = df[df.kind.eq("permutation")]
+    base = df.set_index("label").loc["baseline"]
+    lines = (("ME", "Market", "#2b3a67"), ("PE", "Planner", "#c98a3c"))
+    configure_style()
+    fig, ax = plt.subplots(figsize=(7.6, 5.6))
+    rel = lambda frame, key: np.log(frame[f"C_{key}"] / base[f"C_{key}"])
+    ax.fill_between(curve.corr_av, rel(curve, "ME"), rel(curve, "PE"), color="0.88", zorder=0)
+    for key, name, color in lines:
+        ax.plot(curve.corr_av, rel(curve, key), "-o", color=color, linewidth=2.0, markersize=5.5,
+                markeredgecolor="white", label=name)
+        ax.scatter(perm.corr_av, rel(perm, key), s=42, facecolors="none", edgecolors=color,
+                   linewidths=1.4, zorder=4)
+    ax.scatter([], [], s=42, facecolors="none", edgecolors="0.3", linewidths=1.4, label="Permutations")
+    ax.axhline(0.0, color="0.7", linewidth=0.8)
+    ax.axvline(base.corr_av, color="0.55", linestyle="--", linewidth=1.2)
+    ax.text(base.corr_av, 1.0, " calibrated", transform=ax.get_xaxis_transform(),
+            ha="left", va="top", fontsize=10, color="0.35")
+    ax.set_xlabel(r"$\mathrm{corr}(\alpha,\nu)$ over active firms", fontsize=12)
+    ax.set_ylabel(r"$\ln C - \ln C_{\mathrm{calibrated}}$", fontsize=12)
+    style_axes(ax)
+    ax.legend(loc="upper left", frameon=False, fontsize=10)
     save_pdf_and_png(fig, fig_stem)
     plt.close(fig)
     return True
@@ -144,6 +180,7 @@ def write_artifacts(df: pd.DataFrame, provenance: dict, out_dir: Path, fig_dir: 
     out_dir, fig_dir = Path(out_dir), Path(fig_dir)
     summary = summarize(df, complete)
     summary["figure_written"] = plot_curve(df, fig_dir / "sorting_curve")
+    summary["levels_figure_written"] = plot_levels(df, fig_dir / "sorting_levels")
     tmp = out_dir / "sorting.yaml.tmp"
     tmp.write_text(yaml.safe_dump({"provenance": provenance, "summary": summary}, sort_keys=False))
     tmp.replace(out_dir / "sorting.yaml")

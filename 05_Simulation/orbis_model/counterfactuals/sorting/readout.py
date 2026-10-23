@@ -115,19 +115,19 @@ def plot_curve(df: pd.DataFrame, fig_stem: Path) -> bool:
         return False
     base = df.set_index("label").loc["baseline"]
     configure_style()
-    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.6), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.0), sharey=True)
     for ax, (title, legs) in zip(axes, PANELS):
         for leg in legs:
-            ax.plot(curve.corr_av, curve[f"lambda_{leg}"], "-o", color=COLORS[leg], linewidth=2.0,
-                    markersize=5.5, markeredgecolor="white", label=NAMES[leg])
-        ax.axvline(base.corr_av, color="0.55", linestyle="--", linewidth=1.2)
+            ax.plot(curve.corr_av, curve[f"lambda_{leg}"], "-o", color=COLORS[leg], linewidth=1.4,
+                    markersize=3.5, markeredgecolor="white", label=NAMES[leg])
+        ax.axvline(base.corr_av, color="0.55", linestyle="--", linewidth=0.9)
         ax.text(base.corr_av, 1.0, " calibrated", transform=ax.get_xaxis_transform(),
-                ha="left", va="top", fontsize=10, color="0.35")
-        ax.set_title(title, loc="left", fontsize=13)
-        ax.set_xlabel(r"$\mathrm{corr}(\alpha,\nu)$ over active firms", fontsize=12)
-        style_axes(ax, y_as_percent=True)
-        ax.legend(loc="upper left", frameon=False, fontsize=10)
-    axes[0].set_ylabel(r"Consumption-equivalent $\lambda$", fontsize=12)
+                ha="left", va="top", fontsize=7.5, color="0.35")
+        ax.set_title(title, loc="left", fontsize=10)
+        ax.set_xlabel(r"$\mathrm{corr}(\alpha,\nu)$ over active firms", fontsize=9)
+        style_axes(ax, y_as_percent=True, tick_labelsize=8, axis_linewidth=0.8)
+        ax.legend(loc="upper left", frameon=False, fontsize=7.5)
+    axes[0].set_ylabel(r"Consumption-equivalent $\lambda$", fontsize=9)
     save_pdf_and_png(fig, fig_stem)
     plt.close(fig)
     return True

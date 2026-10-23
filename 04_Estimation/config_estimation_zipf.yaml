@@ -1,0 +1,54 @@
+# Market-free calibration of the Orbis Spain model (04_Estimation/01_calibrate_zipf.py).
+# Parallel to config_estimation.yaml, which it does not replace. Design:
+# 02_Drafts/ARCHIVE/md_files/ORBIS_migration/ORBIS_ZIPF_CALIBRATION.md (Section 8).
+#   eta fixed; gamma -> mu_cw; (xi, N) -> Zipf tail index of firm sales at the top 5% and
+#   top 2% (rank-1/2 OLS); rho_bar -> RTS gap. Four parameters, four moments.
+# The model settings (beta, delta_K, H, alpha_cap_factor, participation, market solver)
+# come from the simulation config below. Relative paths resolve against this file's folder.
+
+paths:
+  bundle_dir: ../03_Empirical/02_Orbis/04_Moments/03_outdata   # must equal the simulation config's
+  zipf_targets: ../03_Empirical/02_Orbis/04_Moments/03_outdata/zipf_targets.yaml   # 12_zipf_targets.py
+  simulation_config: ../05_Simulation/config_simulation.yaml
+  out_results_dir: out_results/zipf   # gitignored; calibrated_params_zipf.yaml goes here
+
+log_level: INFO
+
+monte_carlo:
+  M: 5000                  # markets per objective evaluation
+  seed: 20260525           # common random numbers, fixed across evaluations
+
+fixed:
+  eta: 1.2                 # within-market elasticity, fixed (DEM 1.13-1.20, EMX 2015 1.25)
+
+# Targeted moments and residual weights (residual = weight * (model - target) / (1 + |target|),
+# objective.weighted_relative_residuals). The scheme mirrors config_estimation.yaml: mu_cw 10,
+# every other moment sqrt(10). Exactly identified, so the weights shape the path, not the
+# solution.
+weights:
+  mu_cw: 10.0
+  zeta_top5: 3.162
+  zeta_top2: 3.162
+  alpha_rts_gap_top5_bottom50: 3.162
+
+bounds:
+  xi: {lo: 1.05, hi: 60.0}         # Pareto tail index of capability v
+  N: {lo: 5.0, hi: 2000.0}         # Poisson mean firms per market; must stay below H = 2500
+  gamma_gap: {lo: 0.01, hi: 30.0}  # gamma - eta
+  rho_bar: {lo: -0.95, hi: 0.95}   # alpha-v copula strength; negative allowed
+
+initial_values:
+  # md file fallback (Section 8.5); replaced by the truncated-draw grid crossing before the run.
+  xi: 14.0
+  N: 450.0
+  gamma: 7.0
+  rho_bar: -0.28543106908732163
+
+inner:                     # scipy least_squares, method trf
+  ftol: 1.0e-8             # tight: the problem is square, so trf should drive the cost to ~0
+  xtol: 1.0e-8
+  max_nfev: 25             # residual evaluations by trf; each Jacobian adds 4 more
+  fd_step: 1.0e-2          # absolute forward-difference step in the transformed coordinates
+
+entry:
+  varphi: 0.04             # exogenous exit rate for the post-calibration sunk entry cost (EMX)

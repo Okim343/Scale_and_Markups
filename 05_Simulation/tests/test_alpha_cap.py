@@ -25,16 +25,24 @@ def test_alpha_cap_is_factor_times_min_markup():
         alpha_cap(1.0, 0.99)
 
 
-def test_cap_changes_alpha_values_only():
-    kw = dict(xi=8.0, rho_bar=0.5, N=6.0, M=30, H=12, rng=3)
+def test_cap_truncates_without_mass_point():
+    kw = dict(xi=8.0, rho_bar=0.5, N=6.0, M=400, H=12, rng=3)
     raw = draw_pool(SUPPORT, **kw)
     cap = alpha_cap(7.25, 0.99)
     capped = draw_pool(SUPPORT, alpha_max=cap, **kw)
     assert raw.alpha.max() > cap  # the cap binds on this support
-    np.testing.assert_array_equal(capped.alpha, np.minimum(raw.alpha, cap))
-    np.testing.assert_array_equal(capped.tilde_alpha, raw.tilde_alpha)
-    np.testing.assert_array_equal(capped.v, raw.v)
+    assert capped.alpha.max() < cap  # truncation, not clipping: nothing sits at the cap
+    kept = SUPPORT[SUPPORT < cap]
+    assert set(np.unique(capped.alpha)) <= set(kept)
+    assert capped.alpha.max() == kept.max()
+    # tilde_alpha is the rank within the truncated support, still standard normal
+    assert abs(capped.tilde_alpha.mean()) < 0.05 and abs(capped.tilde_alpha.std() - 1.0) < 0.05
     np.testing.assert_array_equal(capped.active_mask, raw.active_mask)
+
+
+def test_draw_pool_rejects_cap_below_support():
+    with pytest.raises(ValueError, match="alpha_max"):
+        draw_pool(SUPPORT, xi=8.0, rho_bar=0.0, N=3.0, M=2, H=4, rng=0, alpha_max=0.5)
 
 
 def test_draw_pool_rejects_nonpositive_alpha_max():

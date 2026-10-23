@@ -24,11 +24,16 @@ earns negative variable profit at small share, and the inner Cournot fixed point
 is locally unstable for it: such firms either sit at the share floor or take over
 their market, and the anchored GE has no root (see
 ``02_Drafts/md_files/ORBIS_migration/ORBIS_ANCHORED_GE_DIAGNOSIS.md``).
-:func:`draw_pool` therefore caps the drawn alpha at
+:func:`draw_pool` therefore draws alpha from ``F^alpha`` *truncated* at
 ``alpha_cap(gamma, factor) = factor * gamma/(gamma-1)``, recomputed at every
-``gamma``. The cap changes alpha values only: the node draw, the copula rank
-``tilde_alpha`` (from the raw support) and the v draw are the same with or
-without it, so common random numbers are preserved across ``gamma``.
+``gamma``: ``alpha = F^{-1}(u * F(cap))`` with ``u`` uniform, i.e. support nodes at
+or above the cap are dropped and the rest renormalized. This replaced clipping
+(``min(alpha, cap)``), which stacked every draw above the cap into a mass point at
+the most scalable admissible alpha (4.8% of the support, about 60% of the top 1%
+of firms by sales). The copula rank ``tilde_alpha`` is the rank within the
+truncated distribution, so it stays standard normal and ``rho_bar`` keeps its
+meaning. The uniform ``u`` is the common random number, so a given draw maps to
+a nearby quantile as ``gamma`` moves the cap.
 """
 
 from __future__ import annotations
@@ -129,9 +134,9 @@ def draw_pool(
     *rank* dependence while scaling capability without redrawing. ``N`` is the
     Poisson entry mean. ``rho_bar`` lies in (-1, 1): a negative value gives
     negative α–v rank dependence (Salgado et al. calibrate rho_{z,eta} = -0.25).
-    ``alpha_max`` (from :func:`alpha_cap`) caps the drawn alpha from above; the
-    copula rank ``tilde_alpha`` is still computed on the raw support, so capped
-    firms keep their raw ladder position.
+    ``alpha_max`` (from :func:`alpha_cap`) truncates the support from above:
+    alpha is drawn from the support nodes strictly below it, renormalized, and
+    ``tilde_alpha`` is the rank within that truncated support.
     """
     support = np.asarray(alpha_support, dtype=np.float64)
     if support.ndim != 1 or support.size == 0:
@@ -147,13 +152,19 @@ def draw_pool(
     if alpha_max is not None and not alpha_max > 0.0:
         raise ValueError(f"alpha_max must be positive; got {alpha_max}")
 
-    gen = np.random.default_rng(rng)
-    node = gen.integers(0, support.size, size=(M, H))
-    alpha = support[node]
+    # Equal-mass nodes sorted ascending are the quantile function of F^alpha;
+    # truncation keeps the nodes below the cap (conditional draw, no mass point).
+    sorted_support = np.sort(support, kind="stable")
     if alpha_max is not None:
-        alpha = np.minimum(alpha, float(alpha_max))
-    ranks = (np.argsort(np.argsort(support, kind="stable"), kind="stable") + 0.5) / support.size
-    tilde_alpha = ndtri(ranks[node])
+        sorted_support = sorted_support[sorted_support < float(alpha_max)]
+        if sorted_support.size == 0:
+            raise ValueError(f"alpha_max={alpha_max} lies below the whole alpha support")
+    n_nodes = sorted_support.size
+
+    gen = np.random.default_rng(rng)
+    k = np.minimum((gen.random((M, H)) * n_nodes).astype(np.int64), n_nodes - 1)
+    alpha = sorted_support[k]
+    tilde_alpha = ndtri((k + 0.5) / n_nodes)
     eps = gen.standard_normal((M, H))
 
     # Stage 1: standardized ladder; corr(tilde_alpha, ladder) = rho_bar exactly,

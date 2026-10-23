@@ -110,6 +110,7 @@ def market_structure(eq: PooledEquilibrium, *, phi_v: float, alpha_max: float | 
     share = np.where(mask, sol.s, np.nan)
     top = np.nanmax(share, axis=1)
     sales = np.where(mask, sol.sales, 0.0)
+    # Zero under the truncated draw (no alpha reaches the cap); nonzero only for clipped legacy draws.
     capped = (mask & (np.asarray(eq.alpha) >= alpha_max)) if alpha_max is not None else np.zeros_like(mask)
     out = {
         "mu_cw_alpha_ME": m["mu_cw_alpha"],

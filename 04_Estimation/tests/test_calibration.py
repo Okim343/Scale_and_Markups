@@ -167,7 +167,11 @@ def test_objective_caps_alpha_at_this_evaluations_gamma():
     for gamma in (5.0, 9.0):
         params = PooledParams(xi=8.0, N=4.0, gamma=gamma, eta=1.9, a=prim.a, H=prim.H, phi_v=prim.phi_v)
         _, _, eq = pooled_moments_at_params(params, prim, M=8, rng=3, market_solver_kwargs=SOLVER)
-        assert eq.alpha.max() == pytest.approx(0.99 * gamma / (gamma - 1.0))
+        cap = 0.99 * gamma / (gamma - 1.0)
+        kept = prim.alpha_support[prim.alpha_support < cap]
+        # Truncation, not clipping: the largest draw is the top support node below the cap.
+        assert eq.alpha.max() < cap
+        assert eq.alpha.max() == kept.max()
         _, _, raw = pooled_moments_at_params(
             params, prim, M=8, rng=3, market_solver_kwargs=SOLVER, alpha_cap_factor=None,
         )

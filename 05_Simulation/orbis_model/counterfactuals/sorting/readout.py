@@ -19,8 +19,6 @@ NAMES = {"realloc": "Reallocation", "materials": "Materials", "capital": "Capita
          "total": "Total", "disp": "Dispersion", "level": "Level"}
 COLORS = {"realloc": "#2b3a67", "materials": "#6b8e23", "capital": "#c98a3c",
           "total": "#222222", "disp": "#1f7a72", "level": "#8b3a3a"}
-PANELS = (("Lens A", ("realloc", "materials", "capital", "total")),
-          ("Lens B", ("disp", "level", "total")))
 DIAG_COLUMNS = ("mu_cw_ME", "K_PE_over_K_ME", "cap_sales_share_ME", "top_share_median_ME", "cr4_ME")
 
 
@@ -104,6 +102,11 @@ def summarize(df: pd.DataFrame, complete: bool) -> dict:
 
 
 def plot_curve(df: pd.DataFrame, fig_stem: Path) -> bool:
+    """Plot welfare gains and lifetime welfare at every copula sweep point.
+
+    Both lifetime-welfare series use calibrated market welfare as their common
+    reference. Saved W values include discounted utility and labor disutility.
+    """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -115,19 +118,28 @@ def plot_curve(df: pd.DataFrame, fig_stem: Path) -> bool:
         return False
     base = df.set_index("label").loc["baseline"]
     configure_style()
-    fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.0), sharey=True)
-    for ax, (title, legs) in zip(axes, PANELS):
-        for leg in legs:
-            ax.plot(curve.corr_av, curve[f"lambda_{leg}"], "-o", color=COLORS[leg], linewidth=1.4,
-                    markersize=3.5, markeredgecolor="white", label=NAMES[leg])
+    fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.0))
+    ax = axes[0]
+    ax.plot(curve.corr_av, curve.lambda_total, "-o", color=COLORS["total"], linewidth=1.4,
+            markersize=3.5, markeredgecolor="white", label=NAMES["total"])
+    ax.set_title("Panel A. Welfare gain", loc="left", fontsize=10)
+    style_axes(ax, y_as_percent=True, tick_labelsize=8, axis_linewidth=0.8)
+    ax.set_ylabel(r"Consumption-equivalent $\lambda$", fontsize=9)
+
+    ax = axes[1]
+    for key, name, color in (("ME", "Market", "#2b3a67"), ("PE", "Planner", "#c98a3c")):
+        ax.plot(curve.corr_av, curve[f"W_{key}"] - base.W_ME, "-o", color=color,
+                linewidth=1.4, markersize=3.5, markeredgecolor="white", label=name)
+    ax.set_title("Panel B. Lifetime welfare", loc="left", fontsize=10)
+    ax.set_ylabel("Difference from calibrated market", fontsize=9)
+    style_axes(ax, tick_labelsize=8, axis_linewidth=0.8)
+
+    for ax in axes:
         ax.axvline(base.corr_av, color="0.55", linestyle="--", linewidth=0.9)
         ax.text(base.corr_av, 1.0, " calibrated", transform=ax.get_xaxis_transform(),
                 ha="left", va="top", fontsize=7.5, color="0.35")
-        ax.set_title(title, loc="left", fontsize=10)
         ax.set_xlabel(r"$\mathrm{corr}(\alpha,\nu)$ over active firms", fontsize=9)
-        style_axes(ax, y_as_percent=True, tick_labelsize=8, axis_linewidth=0.8)
         ax.legend(loc="upper left", frameon=False, fontsize=7.5)
-    axes[0].set_ylabel(r"Consumption-equivalent $\lambda$", fontsize=9)
     save_pdf_and_png(fig, fig_stem)
     plt.close(fig)
     return True

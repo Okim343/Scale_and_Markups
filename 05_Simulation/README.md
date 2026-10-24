@@ -33,6 +33,8 @@ python 01_simulate.py [--M 500] [--seed S] [--out-dir D]
 python 02_welfare.py  [--M 300] [--seed S] [--out-dir D]
 python 03_fixed_input_welfare.py [--M 400] [--seed S] [--out-dir D] [--skip-full-planner] [--skip-fixed-k]
 python 04_sorting_sweep.py [--M 400] [--seed S] [--out-dir D] [--fig-dir D] [--welfare-ref-dir D] [--fixed-input-ref-dir D] [--grid r1,r2] [--labels a,b] [--validation-only]
+python 05_planner_expansion.py [--welfare-dir D] [--fixed-input-dir D] [--out-dir D] [--corr-target X | --sorting-dir D]
+python 06_level_dispersion.py --reference-draw-policy draw_pool_truncated_v1 [--sorting-dir D] [--workers N] [--out-dir D]
 python -m orbis_model.figures.simulation_figures --results-dir out_results [--window 2015_2019]
 ```
 
@@ -42,7 +44,22 @@ python -m orbis_model.figures.simulation_figures --results-dir out_results [--wi
 | `02_welfare.py` | market and planner allocations on common draws and mask, uniform-markup allocation at mu_bar = market `mu_cw`, two-channel decomposition | `welfare_<window>.yaml`, `welfare_decomposition_<window>.parquet`, `sim_panel_market_<window>.parquet`, `sim_panel_planner_<window>.parquet`, `welfare_manifest_<window>.yaml` |
 | `03_fixed_input_welfare.py` | fixed-input planner chain ME -> PE_I -> PE_K -> PE on the draws and mask of `02_welfare.py` (see below) | in `fixed_input/`: `fixed_input_regimes_<window>.parquet`, `fixed_input_welfare_<window>.yaml`, `sim_panel_planner_fixed_input_<window>.parquet`, `sim_panel_planner_fixed_k_<window>.parquet`, `fixed_input_manifest_<window>.yaml` |
 | `04_sorting_sweep.py` | both welfare lenses across alpha<->v arrangements: copula re-draws over rho_bar, within-sector permutations, homogeneous alpha (see below) | in `sorting/`: `sorting_economies.parquet`, `sorting.yaml`, `results.md`, `validation.json`, `checkpoint_<label>.json`; `out_figs/sorting/sorting_curve.{pdf,png}` |
+| `06_level_dispersion.py` | four market/planner pairs with capability/scalability common or heterogeneous; fresh baseline and common-scalability gates against saved sorting results | in `level_dispersion/`: economy checkpoints, frozen calibration, provenance and validation, `level_dispersion_economies.parquet`, `level_dispersion.yaml`, and the two-panel `results.md` |
 | `orbis_model/figures/simulation_figures.py` | lambda-contribution heatmap and markup distribution from the welfare outputs | `out_figs/welfare/<tag>/` |
+
+## Zipf calibration
+
+`config_simulation_zipf.yaml` runs the suite on the market-free calibration (`04_Estimation/01_calibrate_zipf.py`,
+params `04_Estimation/out_results/zipf/job3162/calibrated_params_zipf.yaml`). It is a copy of
+`config_simulation.yaml` with only `paths` changed: the params file and the output folders `out_results/zipf`
+and `out_figs/zipf`, so the outputs of the current calibration are never overwritten. Model and solver
+settings must stay identical in both files (checked in `tests/test_zipf_plumbing.py`). Pass
+`--config config_simulation_zipf.yaml` to 01 to 04 and 06; smoke runs add `--M` and explicit output folders.
+`05_planner_expansion.py --sorting-dir D` takes the corr(alpha, v) gate target from the baseline of a sorting
+run on the same M, seed and params file instead of the default (the calibrated clipped M = 10000 value).
+`06_level_dispersion.py` takes M and seed from its sorting reference (`--sorting-dir`) and rebuilds that
+draw with `draw_pool` (policy `draw_pool_truncated_v1`); sorting results saved before the switch from
+clipped to truncated alpha draws (commit d7c8300) cannot pass its gates.
 
 Every manifest records the bundle sha256s, the bundle manifest sha256, the config sha256, the params file
 sha256, the git commit and dirty flag, M and the seed.

@@ -28,15 +28,15 @@ from .house_style import configure_style, make_figure, save_pdf_and_png, style_a
 N_SCAL_MU_BINS = 5
 
 
-def _default_results_dir() -> Path:
-    return load_config(DEFAULT_CONFIG_PATH).out_results_dir
+def _default_results_dir(config: Path | str | None = None) -> Path:
+    return load_config(config or DEFAULT_CONFIG_PATH).out_results_dir
 
 
-def default_output_dir(results_dir: Path) -> Path:
-    """Put welfare-style figures under ``out_figs/welfare/<results-tag>``."""
+def default_output_dir(results_dir: Path, config: Path | str | None = None) -> Path:
+    """Put welfare-style figures under ``<paths.out_figs_dir>/welfare/<results-tag>``."""
     name = Path(results_dir).name
     tag = name[len("welfare_"):] if name.startswith("welfare_") else name
-    return load_config(DEFAULT_CONFIG_PATH).out_figs_dir / "welfare" / tag
+    return load_config(config or DEFAULT_CONFIG_PATH).out_figs_dir / "welfare" / tag
 
 
 def _single_match(results_dir: Path, pattern: str, window_tag: str | None) -> Path | None:
@@ -376,10 +376,14 @@ def generate_simulation_figures(
     *,
     panel: Path | str | None = None,
     window_tag: str | None = None,
+    config: Path | str | None = None,
 ) -> Path:
-    """Generate the currently implemented pooled simulation figures."""
-    results_dir = Path(results_dir) if results_dir else _default_results_dir()
-    out_dir = Path(out_dir) if out_dir else default_output_dir(results_dir)
+    """Generate the currently implemented pooled simulation figures.
+
+    ``config`` (default ``config_simulation.yaml``) only sets the default folders.
+    """
+    results_dir = Path(results_dir) if results_dir else _default_results_dir(config)
+    out_dir = Path(out_dir) if out_dir else default_output_dir(results_dir, config)
     out_dir.mkdir(parents=True, exist_ok=True)
     configure_style()
 
@@ -406,6 +410,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Render pooled simulation/welfare figures from full panel outputs."
     )
+    parser.add_argument("--config", default=None,
+                        help="default: config_simulation.yaml (sets the default folders only)")
     parser.add_argument("--results-dir", default=None)
     parser.add_argument("--out-dir", default=None)
     parser.add_argument("--panel", default=None)
@@ -420,6 +426,7 @@ def main(argv: list[str] | None = None) -> int:
         out_dir=args.out_dir,
         panel=args.panel,
         window_tag=args.window,
+        config=args.config,
     )
     print(f"wrote simulation figures to {out}")
     return 0

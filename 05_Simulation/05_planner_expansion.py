@@ -14,7 +14,9 @@ Validation runs first and aborts on failure:
 
 * free planner: ``sum TC_PE / sum TC_ME == K_PE / K_ME`` (same R);
 * PE_K and PE_I: ``sum TC_pl / sum TC_ME == R_pl / R_ME`` (same K);
-* corr(alpha, v) over active firms equals the sorting-sweep baseline value;
+* corr(alpha, v) over active firms equals the sorting-sweep baseline value
+  (``--sorting-dir``: read from that sweep, which must share M, seed and params
+  with the panels; otherwise ``--corr-target`` or the calibrated default);
 * the market cost-weighted markup equals ``welfare_<window>.yaml: mu_bar``.
 
 Reads   <welfare-dir>/{sim_panel_market,sim_panel_planner,welfare}_<window>.*
@@ -24,13 +26,15 @@ Writes  <out-dir>/planner_expansion_cells.parquet, planner_expansion.yaml, resul
 (defaults: <welfare-dir> = out_results, <fixed-input-dir> = out_results/fixed_input,
  <out-dir> = out_results/planner_expansion)
 
-    python 05_planner_expansion.py [--window 2015_2019] [--corr-target X] [--skip-fixed-input]
+    python 05_planner_expansion.py [--welfare-dir D] [--fixed-input-dir D] [--out-dir D]
+        [--window 2015_2019] [--corr-target X | --sorting-dir D] [--skip-fixed-input]
 """
 
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 from pathlib import Path
 
 import numpy as np
@@ -57,10 +61,26 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--fixed-input-dir", default="out_results/fixed_input")
     p.add_argument("--out-dir", default="out_results/planner_expansion")
     p.add_argument("--window", default="2015_2019")
-    p.add_argument("--corr-target", type=float, default=CORR_AV_TARGET)
+    p.add_argument("--corr-target", type=float, default=None,
+                   help=f"default: {CORR_AV_TARGET} (calibrated clipped M = 10000 baseline)")
+    p.add_argument("--sorting-dir", default=None,
+                   help="04_sorting_sweep.py outputs on the same draw; the corr target is their "
+                        "baseline corr_av (excludes --corr-target)")
     p.add_argument("--skip-fixed-input", action="store_true",
                    help="free planner only (skip PE_K and PE_I)")
     return p
+
+
+def sorting_corr_target(sorting_dir: Path, welfare_dir: Path, tag: str) -> float:
+    """Baseline corr(alpha, v) of a sorting sweep run on the same M, seed and params as the panels."""
+    economics = json.loads((sorting_dir / "run_manifest.json").read_text())["economics"]
+    manifest = yaml.safe_load(open(welfare_dir / f"welfare_manifest_{tag}.yaml"))
+    got = (int(manifest["M"]), int(manifest["seed"]), manifest["params_file"]["sha256"])
+    want = (int(economics["M"]), int(economics["seed"]), economics["params_sha256"])
+    if got != want:
+        raise SystemExit(f"welfare panels have (M, seed, params sha256) = {got}; "
+                         f"sorting reference {sorting_dir} has {want}")
+    return float(json.loads((sorting_dir / "checkpoint_baseline.json").read_text())["corr_av"])
 
 
 def _read_active(path: Path, columns: list[str]) -> pd.DataFrame:
@@ -483,9 +503,15 @@ def main(argv: list[str] | None = None) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     tag = args.window
+    if args.sorting_dir is not None:
+        if args.corr_target is not None:
+            raise SystemExit("pass either --corr-target or --sorting-dir, not both")
+        corr_target = sorting_corr_target(Path(args.sorting_dir), welfare_dir, tag)
+    else:
+        corr_target = CORR_AV_TARGET if args.corr_target is None else args.corr_target
 
     df = load_panel(welfare_dir, fixed_dir, tag)
-    valid = validate(df, welfare_dir, fixed_dir, tag, args.corr_target)
+    valid = validate(df, welfare_dir, fixed_dir, tag, corr_target)
     print(yaml.safe_dump({"validation": valid}, sort_keys=False))
     if not valid["passed"]:
         _write_yaml(out_dir / "planner_expansion.yaml", {"validation": valid})
@@ -505,6 +531,8 @@ def main(argv: list[str] | None = None) -> int:
     if fixed_dir is not None:
         inputs += [fixed_dir / f"{stem}_{tag}.parquet" for stem, _ in FIXED_PLANNERS.values()]
         inputs.append(fixed_dir / f"fixed_input_welfare_{tag}.yaml")
+    if args.sorting_dir is not None:
+        inputs.append(Path(args.sorting_dir) / "checkpoint_baseline.json")
     result = {
         "provenance": {
             "inputs_mtime": {str(p): dt.datetime.fromtimestamp(p.stat().st_mtime).isoformat(timespec="seconds")

@@ -3,7 +3,9 @@
 The restricted economies of Table 2 (``hom_alpha``: capability only; ``hom_v``:
 scalability only; ``hom_both``: neither) are refit to the same four targets,
 weights, bounds, M and seed as ``01_calibrate_zipf.py`` over their own free
-parameters (:mod:`orbis_estimation.restricted`). The moment function is the
+parameters (:mod:`orbis_estimation.restricted`). An economy targets only the
+moments it can reach (``economies.<label>.targets`` in the config, default all
+four); the other baseline targets are reported as untargeted misses. The moment function is the
 canonical :func:`orbis_estimation.zipf.zipf_moments_at_params`; the restriction
 is in its inputs (``xi = inf`` for common v, a one-node alpha support for common
 alpha).
@@ -136,14 +138,14 @@ def gate0(zcfg, rcfg, primitives, targets, kw, factor, *, M, seed, workers, out_
     return 0 if payload["exact"] else 1
 
 
-def make_evaluator(economy, *, zcfg, primitives, targets, kw, factor, fixed, M, seed, ckpt_path, header,
-                   resilience, logger) -> Evaluator:
+def make_evaluator(economy, *, zcfg, weights, primitives, targets, kw, factor, fixed, M, seed, ckpt_path,
+                   header, resilience, logger) -> Evaluator:
     rho_bounds = tuple(zcfg.bounds["rho_bar"])
     run = {**header, "economy": economy.label, "M": M, "seed": seed, "fixed": fixed,
-           "weights": dict(zcfg.weights), "bounds": {k: list(v) for k, v in zcfg.bounds.items()},
-           "targets": {k: float(targets[k]) for k in zcfg.weights}}
+           "weights": dict(weights), "bounds": {k: list(v) for k, v in zcfg.bounds.items()},
+           "targets": {k: float(targets[k]) for k in weights}}
     ckpt = Checkpoint(ckpt_path, fingerprint(run), run)
-    ev = Evaluator(economy=economy, primitives=primitives, targets=targets, weights=zcfg.weights,
+    ev = Evaluator(economy=economy, primitives=primitives, targets=targets, weights=weights,
                    fixed=fixed, eta=zcfg.eta, rho_bar_bounds=rho_bounds, M=M, rng=seed,
                    alpha_cap_factor=factor, model_kw=kw, checkpoint=ckpt, logger=logger)
     ev.watchdog = Watchdog(factor=float(resilience.get("timeout_factor", 4.0)),
@@ -174,7 +176,7 @@ def run_scan(ev: Evaluator, grid, initial, *, out_csv: Path, logger) -> None:
                 + ", ".join(f"{k}={best[k]:.5g}" for k in ev.economy.free) + f" cost={best['cost']:.4g}")
 
 
-def write_outputs(result, *, economy, zcfg, rcfg, primitives, targets, factor, fixed, initial, M, seed,
+def write_outputs(result, *, economy, zcfg, weights, rcfg, primitives, targets, factor, fixed, initial, M, seed,
                   max_nfev, out_dir, logger, t0) -> None:
     sim = zcfg.simulation
     m = result.model_moments
@@ -210,7 +212,8 @@ def write_outputs(result, *, economy, zcfg, rcfg, primitives, targets, factor, f
         provenance=provenance,
         model={"alpha_cap_factor": factor, "alpha_draw": "truncated"},
         calibration={"variant": "zipf_restricted", "economy": economy.label, "eta_fixed": zcfg.eta,
-                     "calibrated": list(economy.free), "targets": list(zcfg.moment_keys),
+                     "calibrated": list(economy.free), "targets": list(weights),
+                     "untargeted_baseline_targets": [k for k in zcfg.moment_keys if k not in weights],
                      "initial": {k: float(initial[k]) for k in economy.free}},
         restriction=restriction,
         entry={"sunk_entry_cost_F": compute_sunk_entry_cost(eq, beta=sim.parameters.beta, varphi=zcfg.varphi),
@@ -221,8 +224,11 @@ def write_outputs(result, *, economy, zcfg, rcfg, primitives, targets, factor, f
             "n_evals": result.n_evals, "n_replayed": result.n_replayed, "message": result.message,
             "ge_converged": bool(eq.converged), "ge_residual": float(eq.residual),
             "at_bound": list(result.at_bound), "structure": dict(result.structure),
-            "moments": {k: {"model": float(m[k]), "target": float(targets[k]), "weight": float(zcfg.weights[k]),
+            "moments": {k: {"model": float(m[k]), "target": float(targets[k]), "weight": float(weights[k]),
                             "relative_error": float(m[k] / targets[k] - 1.0)} for k in result.moment_keys},
+            "missed_baseline_targets": {
+                k: {"model": float(m[k]), "target": float(targets[k]), "relative_error": float(m[k] / targets[k] - 1.0)}
+                for k in zcfg.moment_keys if k not in weights},
             "untargeted": {k: {"model": float(m[k]), "target": float(targets[k])} for k in UNTARGETED},
             "diagnostics": {"mu_cw_alpha": float(m["mu_cw_alpha"]),
                             "mean_active_count": float(m["mean_active_count"]),
@@ -235,8 +241,12 @@ def write_outputs(result, *, economy, zcfg, rcfg, primitives, targets, factor, f
     fit = pd.DataFrame([
         {"moment": k, "model": float(m[k]), "target": float(targets[k]),
          "relative_error": float(m[k] / targets[k] - 1.0), "weighted_residual": float(r),
-         "weight": float(zcfg.weights[k])}
+         "weight": float(weights[k]), "targeted": True}
         for k, r in zip(result.moment_keys, result.residuals, strict=True)
+    ] + [
+        {"moment": k, "model": float(m[k]), "target": float(targets[k]),
+         "relative_error": float(m[k] / targets[k] - 1.0), "targeted": False}
+        for k in zcfg.moment_keys if k not in weights
     ])
     fit_path = out_dir / f"calibration_fit_{economy.label}.csv"
     fit.to_csv(fit_path, index=False)
@@ -283,16 +293,21 @@ def main(argv: list[str] | None = None) -> int:
     spec = rcfg["economies"].get(economy.label) or {}
     fixed = {k: float(getattr(base, k)) for k in ALL_PARAMETERS}
     initial = {**fixed, **{k: float(v) for k, v in (spec.get("initial") or {}).items()}}
+    chosen = list(spec.get("targets") or zcfg.moment_keys)
+    unknown = sorted(set(chosen) - set(zcfg.moment_keys))
+    if unknown:
+        raise ValueError(f"{economy.label}: targets {unknown} are not baseline targets")
+    weights = {k: float(zcfg.weights[k]) for k in zcfg.moment_keys if k in chosen}
     out_dir = out_root / economy.label
     out_dir.mkdir(parents=True, exist_ok=True)
     header = {"baseline_sha256": rcfg["baseline_sha"], "workers": workers, "alpha_cap_factor": factor}
     resilience = rcfg["resilience"]
     logger.info(f"{economy.label}: free {list(economy.free)}; common alpha {economy.common_alpha}, "
-                f"common v {economy.common_v}; targets {list(zcfg.moment_keys)}; workers {workers}")
+                f"common v {economy.common_v}; targets {list(weights)}; workers {workers}")
 
     if args.scan:
         M = int(args.M or rcfg["scan_M"])
-        ev = make_evaluator(economy, zcfg=zcfg, primitives=primitives, targets=targets, kw=kw, factor=factor,
+        ev = make_evaluator(economy, zcfg=zcfg, weights=weights, primitives=primitives, targets=targets, kw=kw, factor=factor,
                             fixed=fixed, M=M, seed=seed, ckpt_path=out_dir / f"scan_checkpoint_{economy.label}.jsonl",
                             header={**header, "mode": "scan", "initial": initial}, resilience=resilience,
                             logger=logger)
@@ -306,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
         logger.info("initial from scan: " + ", ".join(f"{k}={initial[k]:.6g}" for k in economy.free))
     M = int(args.M or zcfg.M)
     max_nfev = int(args.max_nfev or zcfg.max_nfev)
-    ev = make_evaluator(economy, zcfg=zcfg, primitives=primitives, targets=targets, kw=kw, factor=factor,
+    ev = make_evaluator(economy, zcfg=zcfg, weights=weights, primitives=primitives, targets=targets, kw=kw, factor=factor,
                         fixed=fixed, M=M, seed=seed,
                         ckpt_path=out_dir / f"calibration_checkpoint_{economy.label}.jsonl",
                         header={**header, "mode": "fit", "initial": {k: initial[k] for k in economy.free},
@@ -314,7 +329,7 @@ def main(argv: list[str] | None = None) -> int:
                         resilience=resilience, logger=logger)
     result = calibrate_restricted(ev, initial=initial, bounds=zcfg.bounds, ftol=zcfg.ftol, xtol=zcfg.xtol,
                                   max_nfev=max_nfev, fd_step=zcfg.fd_step)
-    write_outputs(result, economy=economy, zcfg=zcfg, rcfg=rcfg, primitives=primitives, targets=targets,
+    write_outputs(result, economy=economy, zcfg=zcfg, weights=weights, rcfg=rcfg, primitives=primitives, targets=targets,
                   factor=factor, fixed=fixed, initial=initial, M=M, seed=seed, max_nfev=max_nfev,
                   out_dir=out_dir, logger=logger, t0=t0)
     return 0

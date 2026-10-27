@@ -11,10 +11,12 @@ moment function is :func:`.zipf.zipf_moments_at_params` unchanged:
   (:func:`common_alpha`), recomputed at each evaluation's ``gamma``.
 
 ``rho_bar`` has no role once either primitive is common and is pinned at 0.
-Every economy minimizes the baseline objective (same four targets, same
-weights, same bounds) over its own free parameters (:data:`ECONOMIES`);
-``hom_both`` fixes ``N`` at the baseline value, so its only free parameter is
-``gamma`` (targeting ``mu_cw``).
+Every economy minimizes the baseline objective (same weights and bounds)
+over its own free parameters (:data:`ECONOMIES`), restricted to the targets it
+can reach: ``hom_alpha`` fits ``(xi, N, gamma)`` to all four (its RTS gap is
+zero by construction); ``hom_v`` and ``hom_both`` cannot reach the Zipf indices
+or the RTS gap, so they fit ``gamma`` to ``mu_cw`` with ``N`` at the baseline
+value. The target subset is set in the driver's config.
 
 Evaluations are checkpointed with the exact ``x`` (hex floats) and residuals,
 and a restart replays them: ``trf`` is deterministic, so it fast-forwards to
@@ -67,7 +69,7 @@ class Economy:
 ECONOMIES: dict[str, Economy] = {
     "baseline": Economy("baseline", ("xi", "N", "gamma", "rho_bar"), False, False),
     "hom_alpha": Economy("hom_alpha", ("xi", "N", "gamma"), True, False),
-    "hom_v": Economy("hom_v", ("N", "gamma"), False, True),
+    "hom_v": Economy("hom_v", ("gamma",), False, True),
     "hom_both": Economy("hom_both", ("gamma",), True, True),
 }
 

@@ -263,13 +263,16 @@ def assemble(out, rows, validation, provenance):
         cells = [f"{panel_c[k][leg]['Delta']:.4f}" if leg == "total"
                  else f"{panel_c[k][leg]['Delta']:.4f} ({100 * panel_c[k][leg]['share']:.1f}%)" for k in COLUMNS]
         lines.append(f"| {title} | " + " | ".join(cells) + " |")
-    lines += ["", "Panel D: fit (model / target); the fit cost is the common weighted objective.", "",
+    lines += ["", "Panel D: fit (model value; * not targeted by that economy, which cannot reach it). "
+              "The fit cost is the weighted objective on the economy's own targets.", "",
               "| Moment | Target | " + " | ".join(COLUMN_TITLES[k] for k in COLUMNS) + " |",
               "|---|---:|" + "---:|" * len(COLUMNS)]
     for moment in rows["baseline"]["fit_moments"]:
         target = rows["baseline"]["fit_moments"][moment]["target"]
         lines.append(f"| {moment} | {target:.4f} | "
-                     + " | ".join(f"{rows[k]['fit_moments'][moment]['model']:.4f}" for k in COLUMNS) + " |")
+                     + " | ".join(f"{rows[k]['fit_moments'][moment]['model']:.4f}"
+                                  + ("" if rows[k]["fit_moments"][moment]["targeted"] else "*") for k in COLUMNS)
+                     + " |")
     lines.append("| fit cost | | " + " | ".join(f"{rows[k]['fit_cost']:.3g}" for k in COLUMNS) + " |")
     lines += ["", "Lens B: dispersion ME -> U (U at the economy's own cost-weighted markup), level U -> PE.",
               "Lens A: misallocation ME -> PE_I (K, L, M fixed), materials PE_I -> PE_K (K, L fixed), "
@@ -360,8 +363,11 @@ def main(argv=None):
                 workers=args.workers, smoke=smoke,
                 Y_pct=100 * (row["Q_PE"] / row["Q_ME"] - 1), K_pct=100 * (row["K_PE"] / row["K_ME"] - 1),
                 welfare_pct=100 * row["lambda_total"],
-                fit_moments={k: {"model": float(v["model"]), "target": float(v["target"])}
-                             for k, v in data["fit"]["moments"].items()},
+                fit_moments={
+                    **{k: {"model": float(v["model"]), "target": float(v["target"]), "targeted": True}
+                       for k, v in data["fit"]["moments"].items()},
+                    **{k: {"model": float(v["model"]), "target": float(v["target"]), "targeted": False}
+                       for k, v in (data["fit"].get("missed_baseline_targets") or {}).items()}},
                 fit_cost=float(data["fit"]["cost"]), fit_success=bool(data["fit"]["success"]),
                 fit_at_bound=list(data["fit"].get("at_bound", [])),
             )

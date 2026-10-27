@@ -15,7 +15,7 @@ import yaml
 
 from .sweep import LEGS, REGIMES
 
-NAMES = {"realloc": "Reallocation", "materials": "Materials", "capital": "Capital",
+NAMES = {"realloc": "Misallocation", "materials": "Materials", "capital": "Capital",
          "total": "Total", "disp": "Dispersion", "level": "Level"}
 COLORS = {"realloc": "#2b3a67", "materials": "#6b8e23", "capital": "#c98a3c",
           "total": "#222222", "disp": "#1f7a72", "level": "#8b3a3a"}
@@ -24,6 +24,17 @@ DIAG_COLUMNS = ("mu_cw_ME", "K_PE_over_K_ME", "cap_sales_share_ME", "top_share_m
 
 def copula_curve(df: pd.DataFrame) -> pd.DataFrame:
     return df[df.kind.eq("copula")].sort_values("corr_av").reset_index(drop=True)
+
+
+PLOT_CORR_GAP = 0.02  # sweep points this close to the calibrated corr duplicate it visually
+
+
+def plotted_curve(df: pd.DataFrame) -> pd.DataFrame:
+    """Copula curve for the figures: drops sweep points on top of the calibrated economy."""
+    curve = copula_curve(df)
+    base_corr = df.set_index("label").loc["baseline", "corr_av"]
+    near = curve.label.ne("baseline") & (curve.corr_av - base_corr).abs().lt(PLOT_CORR_GAP)
+    return curve[~near].reset_index(drop=True)
 
 
 def sorting_split(df: pd.DataFrame) -> dict:
@@ -113,7 +124,7 @@ def plot_curve(df: pd.DataFrame, fig_stem: Path) -> bool:
 
     from ...figures.house_style import configure_style, save_pdf_and_png, style_axes
 
-    curve = copula_curve(df)
+    curve = plotted_curve(df)
     if len(curve) < 2:
         return False
     base = df.set_index("label").loc["baseline"]
@@ -145,6 +156,46 @@ def plot_curve(df: pd.DataFrame, fig_stem: Path) -> bool:
     return True
 
 
+def plot_lenses(df: pd.DataFrame, fig_stem: Path) -> bool:
+    """Stack the Lens B (dispersion, level) and Lens A (reallocation, materials, capital)
+    legs of Delta_total at every copula sweep point.
+
+    In Delta = ln(1 + lambda) units each lens sums exactly to Delta_total.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from ...figures.house_style import configure_style, save_pdf_and_png, style_axes
+
+    curve = plotted_curve(df)
+    if len(curve) < 2:
+        return False
+    base = df.set_index("label").loc["baseline"]
+    configure_style()
+    fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.0), sharey=True)
+    panels = (("Panel A. Dispersion and level", ("disp", "level")),
+              ("Panel B. Misallocation, materials and capital", ("realloc", "materials", "capital")))
+    for ax, (title, legs) in zip(axes, panels):
+        ax.stackplot(curve.corr_av, *[curve[f"Delta_{k}"] for k in legs],
+                     colors=[COLORS[k] for k in legs], alpha=0.85, labels=[NAMES[k] for k in legs],
+                     edgecolor="white", linewidth=0.6)
+        ax.plot(curve.corr_av, curve.Delta_total, "-o", color=COLORS["total"], linewidth=1.2,
+                markersize=3.0, markeredgecolor="white", label=NAMES["total"])
+        ax.axvline(base.corr_av, color="0.55", linestyle="--", linewidth=0.9)
+        ax.text(base.corr_av, 1.0, " calibrated", transform=ax.get_xaxis_transform(),
+                ha="left", va="top", fontsize=7.5, color="0.35")
+        ax.set_title(title, loc="left", fontsize=10)
+        ax.set_xlabel(r"$\mathrm{corr}(\alpha,\nu)$ over active firms", fontsize=9)
+        style_axes(ax, tick_labelsize=8, axis_linewidth=0.8)
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[::-1], labels[::-1], loc="upper left", frameon=False, fontsize=7.5)
+    axes[0].set_ylabel(r"$\Delta = \ln(1+\lambda)$", fontsize=9)
+    save_pdf_and_png(fig, fig_stem)
+    plt.close(fig)
+    return True
+
+
 def plot_levels(df: pd.DataFrame, fig_stem: Path) -> bool:
     """ln C of the market and the planner relative to the baseline, against corr(alpha, v).
 
@@ -158,7 +209,7 @@ def plot_levels(df: pd.DataFrame, fig_stem: Path) -> bool:
 
     from ...figures.house_style import configure_style, save_pdf_and_png, style_axes
 
-    curve = copula_curve(df)
+    curve = plotted_curve(df)
     if len(curve) < 2:
         return False
     perm = df[df.kind.eq("permutation")]
@@ -193,6 +244,7 @@ def write_artifacts(df: pd.DataFrame, provenance: dict, out_dir: Path, fig_dir: 
     summary = summarize(df, complete)
     summary["figure_written"] = plot_curve(df, fig_dir / "sorting_curve")
     summary["levels_figure_written"] = plot_levels(df, fig_dir / "sorting_levels")
+    summary["lenses_figure_written"] = plot_lenses(df, fig_dir / "sorting_lenses")
     tmp = out_dir / "sorting.yaml.tmp"
     tmp.write_text(yaml.safe_dump({"provenance": provenance, "summary": summary}, sort_keys=False))
     tmp.replace(out_dir / "sorting.yaml")

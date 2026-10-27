@@ -38,10 +38,13 @@ bounds:
   rho_bar: {lo: -0.95, hi: 0.95}   # alpha-v copula strength; negative allowed
 
 initial_values:
-  # md file fallback (Section 8.5); replaced by the truncated-draw grid crossing before the run.
-  xi: 14.0
-  N: 450.0
-  gamma: 7.0
+  # (xi, N): top-5%/top-2% crossing of the truncated-draw grid (workstation job 3158; eta 1.2,
+  # gamma 7.679 and rho_bar -0.285 held fixed, M 2000, quadratic spline on the log grid,
+  # cond 6.4). gamma and rho_bar: the current calibrated values the grid held fixed.
+  # md file fallback was xi 14, N 450, gamma 7.0 (clipped-draw crossing).
+  xi: 7.379
+  N: 671.0
+  gamma: 7.67941894466164
   rho_bar: -0.28543106908732163
 
 inner:                     # scipy least_squares, method trf

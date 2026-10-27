@@ -134,7 +134,11 @@ def main(argv: list[str] | None = None) -> int:
               f"`data` is the market-free or NAICS4 data value (markup rows: the data markup_wi, "
               f"one elasticity per NAICS2 cell-year, to compare with the `_meas` model rows); "
               f"`data_naics2` the NAICS2 value.\n\n")
-    prefix.with_suffix(".md").write_text(header + table.to_markdown(index=False, floatfmt=".4g") + "\n")
+    try:
+        body = table.to_markdown(index=False, floatfmt=".4g")
+    except ImportError:  # tabulate missing (workstation venv): plain-text table instead
+        body = "```\n" + table.to_string(index=False, float_format=lambda v: f"{v:.4g}") + "\n```"
+    prefix.with_suffix(".md").write_text(header + body + "\n")
     logger.info("\n" + table.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
     logger.info(f"wrote {prefix}.csv and .md")
     return 0

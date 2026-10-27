@@ -1,0 +1,44 @@
+# Restricted-heterogeneity recalibrations (04_Estimation/03_calibrate_restricted.py).
+# Each restricted economy minimizes the baseline Zipf objective over its own free
+# parameters (orbis_estimation.restricted.ECONOMIES):
+#   hom_alpha  (nu only)     xi, N, gamma;  alpha = harmonic mean of F^alpha below the cap; rho_bar 0
+#   hom_v      (alpha only)  N, gamma;      xi = inf (v = v_min); rho_bar 0
+#   hom_both                 gamma;         both common; N fixed at the baseline value
+# Everything the baseline fit uses (bundle, Zipf targets, simulation config, M, seed, eta,
+# weights, bounds, trf settings) is read from zipf_config, so the footing is the baseline's.
+# Relative paths resolve against this file's folder.
+
+paths:
+  zipf_config: config_estimation_zipf.yaml
+  baseline_params: out_results/zipf/job3162/calibrated_params_zipf.yaml   # workstation job 3162
+  out_results_dir: out_results/zipf/restricted   # gitignored; one subfolder per economy
+
+baseline_params_sha256: 76e893fe4d6ddd197ba4c4221522c5032d7ace5a9311e6996287ad11db5a8f00
+
+log_level: INFO
+
+# Initial values default to the baseline calibration; `initial` overrides them and
+# --initial-from-scan replaces them with the lowest-cost scan point.
+# Scans (--scan) evaluate the objective on a grid at scan_M; free parameters without
+# an axis stay at their initial values.
+scan_M: 1000
+
+economies:
+  hom_alpha:
+    scan:              # gamma held at its initial value
+      xi: [3.0, 4.5, 6.0, 8.0, 10.5, 14.0]
+      N: [100.0, 200.0, 350.0, 600.0, 1000.0, 1600.0]
+  hom_v:
+    scan:
+      N: [25.0, 50.0, 100.0, 200.0, 400.0, 800.0, 1400.0, 2000.0]
+      gamma: [3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 13.0]
+  hom_both:
+    initial:
+      gamma: 6.56      # symmetric Cournot with s = 1/N at the baseline N gives mu_cw = 1.1815
+    scan:
+      gamma: [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
+
+resilience:            # per-evaluation watchdog (orbis_estimation.restricted.Watchdog)
+  timeout_factor: 4.0  # limit = max(timeout_min_s, factor * median completed evaluation)
+  timeout_min_s: 900
+  timeout_first_s: 5400   # before three evaluations have completed, and for the final solve

@@ -80,7 +80,7 @@ conda env create -f environment.yml
 conda activate scale_markups
 ```
 
-The paper is compiled with [Typst](https://typst.app) (`typst compile 02_Drafts/main_orbis.typ`). Figures are not versioned, so recompiling requires rerunning the pipeline below, whose figure scripts write into `02_Drafts/figures/orbis/`.
+The paper is compiled with [Typst](https://typst.app) (`typst compile 02_Drafts/main_orbis.typ`). Figures are not present, so recompiling requires rerunning the pipeline below, whose figure scripts write into `02_Drafts/figures/orbis/`.
 
 **1. Empirical bundle.** The Orbis stages, their order and the bundle contract are documented in [`03_Empirical/README.md`](03_Empirical/README.md). The bundle in `03_Empirical/02_Orbis/04_Moments/03_outdata/` is the only empirical input read by the model.
 

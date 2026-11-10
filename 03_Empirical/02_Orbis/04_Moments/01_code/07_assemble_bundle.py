@@ -8,9 +8,9 @@ reads (D11). Writes into <output.outdata_dir>:
                           alpha_rts_gap_top5_bottom50
   manifest.yaml           provenance (commit, dirty flag, config sha256, input fingerprints and
                           upstream commits, output sha256), definitions, markets, diagnostics
-Then load_bundle(outdata) from 04_Code (D12). The current loader still requires
-alpha_z_copula_rho_bar and alpha_sales_corr_empirical, which this bundle drops on purpose
-(04_Code is to be rewritten): that one error is logged; any other loader error fails the step.
+Then reads the bundle back with the readers the model and the calibration use (D12):
+orbis_model.primitives (05_Simulation) for the model inputs and orbis_estimation.targets
+(04_Estimation) for the targets. Any reader error fails the step.
 
 Reads   <output.intermediary_dir>/{F_alpha.parquet, F_alpha_manifest.yaml, pooled_targets.json,
         aggregate_markup.json, emx_slope_moment.yaml, alpha_moments.json}
@@ -149,20 +149,13 @@ def main():
     logger.info("aggregate_moments.yaml:\n" + yaml.safe_dump(moments, sort_keys=False))
 
     # --- Model loader check (D12) -------------------------------------------------------------
-    sys.path.insert(0, str(PROJECT_ROOT / "04_Code"))
-    from steady_state.io_bundle import REQUIRED_SCALAR_KEYS, load_bundle
-    dropped = [k for k in REQUIRED_SCALAR_KEYS if k not in moments]
-    try:
-        bundle = load_bundle(outd)
-    except ValueError as e:
-        # The loader's last check is the required scalars: every earlier check has passed.
-        if str(e) != f"aggregate_moments.yaml: top-level scalars missing {dropped}" or not dropped:
-            raise
-        logger.warning(f"load_bundle: every check passes except the scalars dropped on purpose "
-                       f"{dropped}; the current 04_Code loader rejects this bundle until its rewrite")
-    else:
-        logger.info("load_bundle OK; calibration_targets: "
-                    f"{bundle.calibration_targets(markup_target=config['bundle']['markup_target_note'])}")
+    sys.path.insert(0, str(PROJECT_ROOT / "04_Estimation"))
+    sys.path.insert(0, str(PROJECT_ROOT / "05_Simulation"))
+    from orbis_estimation.targets import load_targets
+    from orbis_model.primitives import read_aggregate_moments, read_f_alpha
+    read_aggregate_moments(outd)
+    nodes = read_f_alpha(outd)
+    logger.info(f"bundle readers OK: {len(nodes)} F_alpha nodes; targets {load_targets(outd)}")
 
 
 if __name__ == "__main__":

@@ -1,126 +1,127 @@
-# Market Power and the Scalability of Firms
+# Who Carries the Markups? Scalability, Sorting, and the Welfare Cost of Market Power
 
 **Enrico Truzzi** · Universitat Pompeu Fabra · [enrico.truzzi@upf.edu](mailto:enrico.truzzi@upf.edu)
 
-![Python 3.10](https://img.shields.io/badge/python-3.10-blue) ![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Status: work in progress](https://img.shields.io/badge/status-work%20in%20progress-orange)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue) ![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Status: working paper](https://img.shields.io/badge/status-working%20paper-orange)
 
-Working draft: [`02_Drafts/model.typ`](02_Drafts/model.typ) (Typst source)
+Paper: [`02_Drafts/main_orbis.pdf`](02_Drafts/main_orbis.pdf) (compiled from the Typst source [`02_Drafts/main_orbis.typ`](02_Drafts/main_orbis.typ))
 
 ## Overview
 
-Classic oligopoly models assign every firm the same returns-to-scale parameter, such that firms differ in productivity but not in how easily they can scale. With heterogeneous returns to scale, capability and scalability jointly determine equilibrium size, and, under oligopoly, size determines markups. This project argues that the sorting between capability and scalability, and not only their marginal distributions, plays a major role in shaping the aggregate welfare cost of market power, since a given markup wedge is more distortionary when it is attached to a firm that can absorb large quantities with only a limited increase in cost.
+Standard oligopoly models let firms differ in productivity but assign every firm the same returns to scale. This project introduces firm-level heterogeneity in returns to scale (RTS), disciplined by gross-output production function estimates for Spanish firms in Orbis, into an Atkeson-Burstein-style Cournot oligopoly, and studies how the sorting between productivity and scalability shapes the welfare cost of market power. With heterogeneous RTS, productivity and scalability jointly determine equilibrium size, and under oligopoly size determines markups. A given markup wedge is therefore more distortionary when it sits on a firm that can absorb large quantities with only a limited increase in cost.
 
-The quantitative environment is a nested-CES Cournot economy in the tradition of Edmond, Midrigan and Xu (2023, henceforth EMX), where markups are equilibrium outcomes of finite-firm competition inside each sector and larger market shares relax the perceived demand elasticity. Additionally, I combine this endogenous-market-power mechanism with firm-level returns to scale disciplined by gross-output production function estimates on Compustat, using the approach of Gandhi, Navarro and Rivers (2020, henceforth GNR) in the spirit of Hubmer, Chan, Ozkan, Salgado and Hong (2025). The research question is the following: how does capability-scalability sorting shape endogenous markups and their aggregate welfare cost?
+Returns to scale are estimated with the method of Gandhi, Navarro and Rivers (2020, GNR) in the spirit of Hubmer, Chan, Ozkan, Salgado and Hong (2025), on 1,391,061 Spanish Orbis firm-years from 2015 to 2019. Markups follow the production-function approach of De Loecker, Eeckhout and Unger (2020).
 
 ## Main Results
 
-The calibrated economy matches the SG&A-inclusive aggregate markup, within-sector concentration (CR4 and CR20), the EMX markup-concentration slope and the empirical correlation between returns to scale and log sales, and generates a markup distribution that is considerably more compressed than that of EMX, with the remaining dispersion concentrated in a thin upper tail of dominant firms. Moving from the market to the efficient allocation yields a large consumption-equivalent gain, most of which comes from the aggregate scale of production rather than from the reallocation of a given stock of inputs, and from the markup level rather than from markup dispersion. That is, the two lenses used in the paper (a fixed-input misallocation view in the style of Hsieh and Klenow, and a uniform-markup view in the style of EMX) both place the bulk of the loss on the capital-accumulation margin.
-
-Positive sorting of scalability onto capability nearly doubles the welfare cost of markups relative to an economy where the same returns to scale are assigned at random, whereas reverse sorting and a common returns-to-scale parameter lower it further. In particular, the amplification operates through a small set of sector leaders that combine the highest capability, the highest scalability and the highest markups, and that absorb a disproportionate share of the inputs the planner adds, with the markup acting as the trigger and the scalable technology as the source of the expansion. Reading this as evidence that sorting is harmful would, however, be an incorrect interpretation, since breaking sorting lowers consumption in every allocation: sorting is productive, and raises the cost of markups only because the planner gains more from it than the market does.
+- **Data.** Returns to scale are U-shaped in firm size, both within NAICS2 industry-years and in the pooled sample, with the top 5% of firms by sales reaching an RTS about 0.074 above the industry mean. As in Hubmer et al., the steep rise at the top is driven by the output elasticity of intermediate inputs.
+- **Calibration.** The calibrated vector $(\xi, N, \gamma, \bar\rho)$ matches the cost-weighted aggregate markup (1.1815), two Zipf tail indices of firm sales (top 5% and top 2%) and the RTS gap between the top 5% and the bottom 50% of firms by sales (0.046), all within 0.015%. The implied productivity-scalability correlation is negative, about -0.14.
+- **Welfare cost of markups.** Removing every markup raises steady-state consumption by $\lambda = 32.3\%$, more than twice the 14.3% of an economy recalibrated to the same targets with common RTS. Each margin on its own adds little, and the joint interaction of productivity and scalability accounts for 48.7% of the gap, such that the two act as complements.
+- **Channels.** Reallocating the inputs the market already uses would raise consumption by only 5.5%, while capital accounts for 63% of the gap. Markups lower welfare mostly by holding back the expansion of scalable firms, whose output responds most to a given markup.
+- **Sorting.** Holding both marginal distributions fixed, $\lambda$ is S-shaped in the correlation between the two margins, rising from 9.0% under perfect negative pairing to 50.3% under random reassignment and 152.3% under perfect positive pairing. Sorting raises welfare in both the market and the planner allocation, and widens the gap because the planner gains faster.
 
 ## The Model in Brief
 
-Each firm $i$ in sector $j$ is characterised by its capability $\nu_{ji}$ and its scalability $\alpha_{ji}$, which enter an anchored marginal cost
+Each firm $i$ in sector $j$ draws a scalability $\alpha_{ji}$ from the empirical distribution $F^\alpha$ and a productivity $\nu_{ji}$, which enter an anchored marginal cost
 
 $$MC_{ji}(y) = \frac{\Omega^g}{\nu_{ji}} \left(\frac{y}{\hat y}\right)^{1/\alpha_{ji} - 1},$$
 
-where $\Omega^g$ is the gross-output unit cost and $\hat y$ a common anchor output, such that capability alone ranks firms at the anchor and $\alpha_{ji}$ only governs how fast marginal cost rises away from it. Finite-firm Cournot competition delivers the EMX inverse-markup rule
+where $\Omega^g$ is the gross-output unit cost and $\hat y$ the median active-firm output. Productivity alone ranks firms at the anchor, and $\alpha_{ji}$ only governs how fast marginal cost rises away from it. Finite-firm Cournot competition inside each sector delivers the inverse-markup rule
 
-$$\frac{1}{\mu_{ji}} = 1 - \frac{1}{\gamma} - \left(\frac{1}{\eta} - \frac{1}{\gamma}\right) s_{ji}, \qquad \gamma > \eta,$$
+$$\frac{1}{\mu_{ji}} = 1 - \frac{1}{\gamma} - \left(\frac{1}{\eta} - \frac{1}{\gamma}\right) s_{ji}, \qquad \gamma > \eta.$$
 
-which makes markups increasing in the market share $s_{ji}$. The dependence between the two margins is introduced only through ranks, with a Gaussian copula of strength $\bar\rho$ mapped into a Pareto capability draw,
+The dependence between the two margins runs through ranks, with a Gaussian copula of strength $\bar\rho$ mapped into a Pareto productivity draw,
 
 $$\ell_{ji} = \bar\rho\, \tilde\alpha_{ji} + \sqrt{1 - \bar\rho^2}\, \epsilon_{ji}, \qquad \nu_{ji} = \underline{\nu}\, \big(1 - \Phi(\ell_{ji})\big)^{-1/\xi},$$
 
-where $\tilde\alpha_{ji}$ is the standard-normal score of the firm's scalability rank in its sector. Re-solving the economy under alternative within-sector arrangements of $\alpha$, which leave both marginal distributions unchanged, splits any welfare loss $\Delta$ (a log consumption ratio) additively into a common-$\alpha$ term, a heterogeneity term and a sorting term,
-
-$$\Delta_{\text{base}} = \Delta_{\text{hom}} + (\Delta_{\text{shuf}} - \Delta_{\text{hom}}) + (\Delta_{\text{base}} - \Delta_{\text{shuf}}).$$
+with the number of firms per sector drawn from a Poisson distribution with mean $N$. Scalability draws are truncated at $0.99\,\gamma/(\gamma-1)$, since cost minimization requires returns to scale not to exceed the markup. The welfare gain is split in two non-nested ways, into markup dispersion and level (through a uniform-markup allocation), and into misallocation, materials and capital (through fixed-input and fixed-capital planners).
 
 ## Repository Layout
 
 ```text
 .
 ├── 02_Drafts/
-│   ├── model.typ                     # working draft (Typst)
+│   ├── main_orbis.typ             # paper source (Typst)
+│   ├── main_orbis.pdf             # compiled paper
 │   └── literature.bib
-├── 03_Empirical/                     # data -> calibration bundle (see 03_Empirical/README.md)
-│   ├── 00_Hubmer_RTS/01_code/        # GNR gross-output estimation, firm-level returns to scale
-│   └── 01_industry_alpha/02_code/    # Compustat + KLEMS -> pooled targets, F(alpha), bundle
-├── 04_Code/
-│   ├── steady_state/                 # structural model package
-│   │   ├── model/                    # pool draws, Cournot pricing, market solver, aggregation
-│   │   ├── calibration/              # inner/outer loop, SMM objective, identification checks
-│   │   ├── simulation/               # cross-section and model moments
-│   │   ├── welfare/                  # market and planner allocations, welfare metrics
-│   │   ├── figures/
-│   │   └── config.yaml
-│   ├── counterfactuals/              # welfare decompositions and sorting experiments
-│   └── tests/                        # pytest suite
-├── run_steady_state.py               # project-root launcher for the steady_state CLI
-└── environment.yml
+├── 03_Empirical/                  # data -> calibration bundle (see 03_Empirical/README.md)
+│   ├── 00_GNR_core/               # shared GNR estimator (Python port of the Hubmer et al. MATLAB code)
+│   ├── 02_Orbis/                  # Orbis Spain: cleaning, GNR, markups, moments, age/size side analysis
+│   └── 01_Compustat/              # earlier Compustat pipeline, kept as a reference only
+├── 04_Estimation/                 # calibration (package orbis_estimation)
+├── 05_Simulation/                 # structural model, welfare and counterfactuals (package orbis_model)
+├── environment.yml
+└── LICENSE
 ```
+
+The dependency runs one way. `03_Empirical` writes the bundle, `04_Estimation` reads it and writes the calibrated parameters, and `05_Simulation` reads both. Every output records the sha256 of its inputs, and the simulation refuses to run on a parameter file calibrated on a different bundle.
 
 ## From Paper to Code
 
-| Draft section | Object | Code |
-|---|---|---|
-| Data and Measurement | Firm-level returns to scale (GNR) | `03_Empirical/01_Compustat/00_Hubmer_RTS/01_code/` (stages R1 to R5; estimator in `03_Empirical/00_GNR_core/`) |
-| Data and Measurement | Pooled targets, $F(\alpha)$, copula inputs, calibration bundle | `03_Empirical/01_Compustat/01_industry_alpha/02_code/` (stages S1 to S8) |
-| Pooled-Market Steady State | Market equilibrium and sector firm counts | `04_Code/steady_state/model/` |
-| Calibration | Simulated method of moments | `04_Code/steady_state/calibration/` |
-| Welfare Cost of Markups, Lens A | Reallocation and scale legs | `04_Code/counterfactuals/fixed_input_welfare/` |
-| Welfare Cost of Markups, Lens B | Dispersion and level legs | `04_Code/counterfactuals/lens_b_decomposition/` |
-| Sorting and the Cost of Markups | Baseline, shuffled and reverse-sorted arrangements | `04_Code/counterfactuals/scalability_sorting/` |
-| Sorting and the Cost of Markups | Homogeneous returns to scale | `04_Code/counterfactuals/homogeneous_rts/` |
-| Sorting and the Cost of Markups | Scale-channel and planner-expansion diagnostics | `04_Code/counterfactuals/scale_channel_decomposition/`, `04_Code/counterfactuals/planner_expansion/` |
+| Paper object | Producer |
+|---|---|
+| RTS estimates, $F^\alpha$, $\phi_v$ (Section 3.2) | `03_Empirical/02_Orbis/02_GNR`, then `04_Moments/01_code/01_build_F_alpha.py` and `06_alpha_moments.py` |
+| Aggregate markup, Zipf tail indices, RTS gap (Section 3.2) | `03_Empirical/02_Orbis/03_Markups`, `04_Moments/01_code/04_aggregate_markup.py`, `12_zipf_targets.py`, `06_alpha_moments.py` |
+| Figure 1, RTS by sales percentile | `03_Empirical/02_Orbis/04_Moments/01_code/10_fig_rts_by_size.py` |
+| Table 1, calibration and fit | `04_Estimation/01_calibrate_zipf.py` |
+| Table 2 and Table B2, four recalibrated economies | `04_Estimation/03_calibrate_restricted.py`, then `05_Simulation/08_recalibrated_anatomy.py` |
+| Figure 2, channels from the homogeneous economy to the baseline | `05_Simulation/09_recalibrated_channels_figure.py` |
+| Table 3, sorting sweep | `05_Simulation/04_sorting_sweep.py` (welfare columns), `10_sorting_markup_moments.py` (markup columns) |
+| Figure 3 and Figure B1, decomposition and welfare along the sweep | `05_Simulation/04_sorting_sweep.py` (`sorting_lenses`, `sorting_curve`) |
 
-Each counterfactual package carries its own README documenting its convention and outputs.
+All results in the paper use the market-free (Zipf) calibration, that is `04_Estimation/config_estimation_zipf.yaml` and `05_Simulation/config_simulation_zipf.yaml`.
 
 ## Replication
 
-**Environment.** The code is written in Python 3.10 and relies on NumPy, SciPy, pandas, Numba and joblib.
+**Environment.**
 
 ```bash
 conda env create -f environment.yml
 conda activate scale_markups
 ```
 
-**Empirical bundle.** The two empirical sub-pipelines, their stage DAG and the full input/output contract are documented in [`03_Empirical/README.md`](03_Empirical/README.md). The bundle they produce is the only empirical input read by the structural model.
+The paper is compiled with [Typst](https://typst.app) (`typst compile 02_Drafts/main_orbis.typ`). Figures are not versioned, so recompiling requires rerunning the pipeline below, whose figure scripts write into `02_Drafts/figures/orbis/`.
 
-**Calibration and simulation.** From the project root:
+**1. Empirical bundle.** The Orbis stages, their order and the bundle contract are documented in [`03_Empirical/README.md`](03_Empirical/README.md). The bundle in `03_Empirical/02_Orbis/04_Moments/03_outdata/` is the only empirical input read by the model.
+
+**2. Calibration.** From `04_Estimation/` (see [`04_Estimation/README.md`](04_Estimation/README.md)):
 
 ```bash
-python run_steady_state.py calibrate --M 1000 --outer-maxiter 5
-python run_steady_state.py simulate --calibration 04_Code/out_results/calibration_2010_2019.yaml
-python run_steady_state.py validate --calibration 04_Code/out_results/calibration_2010_2019.yaml
+python 01_calibrate_zipf.py
+python 03_calibrate_restricted.py --economy hom_alpha
+python 03_calibrate_restricted.py --economy hom_v
+python 03_calibrate_restricted.py --economy hom_both
 ```
 
-**Counterfactuals.** From `04_Code/`, each experiment reads the calibrated parameter file, for instance:
+**3. Welfare and counterfactuals.** From `05_Simulation/`, each script with `--config config_simulation_zipf.yaml` (see [`05_Simulation/README.md`](05_Simulation/README.md) for the arguments, the reference gates and the run order):
 
-```bash
-python -m counterfactuals.fixed_input_welfare.run_fixed_capital_planner --calibration out_results/calib_pooled/calibration_pooled.yaml
-python -m counterfactuals.lens_b_decomposition.run_lens_b --calibration out_results/calib_pooled/calibration_pooled.yaml
-python -m counterfactuals.scalability_sorting.run_scalability_sorting --calibration out_results/calib_pooled/calibration_pooled.yaml
+```text
+02_welfare.py -> 03_fixed_input_welfare.py -> 04_sorting_sweep.py -> 10_sorting_markup_moments.py
+                                           -> 06_level_dispersion.py -> 07_heterogeneity_anatomy.py
+                                              -> 08_recalibrated_anatomy.py -> 09_recalibrated_channels_figure.py
 ```
 
 **Tests.**
 
 ```bash
-pytest 04_Code/tests 03_Empirical/01_Compustat/01_industry_alpha/02_code/tests
+(cd 04_Estimation && python -m pytest)
+(cd 05_Simulation && python -m pytest)
 ```
 
-**Computational note.** The market solver is vectorised and parallelised across simulated sectors. A full calibration with 5,000 simulated sectors takes around two hours parallelised over 16 Haswell cores, whereas a single counterfactual at 10,000 sectors runs in around ten to fifteen minutes.
+Tests that need the licensed bundle skip when it is absent, and the rest run on synthetic bundles.
+
+**Computational note.** The market solver is vectorized and parallelized over simulated markets. The calibration runs at $M = 5000$ markets and the sorting sweep at $M = 10000$, each taking a few hours on 16 to 24 cores. The cluster scripts are kept local.
 
 ## Data Availability
 
-Firm-level data come from Compustat North America (2010 to 2019), accessed through WRDS under a university licence, and cannot be redistributed, whereas sector capital shares come from the publicly available KLEMS accounts. Raw, intermediate and output data folders are therefore excluded from version control by design, and the empirical pipeline expects them under the paths listed in [`03_Empirical/README.md`](03_Empirical/README.md).
+Firm-level data come from Orbis (Bureau van Dijk), accessed through WRDS under a university licence, and cannot be redistributed. Deflators (Eurostat) and the euro overnight rate (ECB) are public and fetched by the pipeline. Raw, intermediate and output data, model outputs and figures are excluded from version control by design, and the pipeline expects them under the paths listed in [`03_Empirical/README.md`](03_Empirical/README.md).
 
 ## Citation
 
 ```bibtex
-@unpublished{truzzi2026scalable,
+@unpublished{truzzi2026carries,
   author = {Truzzi, Enrico},
-  title  = {How Costly are Scalable Markups?},
+  title  = {Who Carries the Markups? Scalability, Sorting, and the Welfare Cost of Market Power},
   note   = {Working paper, Universitat Pompeu Fabra},
   year   = {2026}
 }

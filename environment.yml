@@ -1,9 +1,8 @@
 name: scale_markups
 channels:
   - conda-forge
-  - defaults
 dependencies:
-  - python=3.10
+  - python=3.12
   - pip
   - numpy
   - scipy
@@ -11,11 +10,8 @@ dependencies:
   - pyarrow
   - pyyaml
   - matplotlib
-  - python-graphviz
-  - numba
-  - joblib
   - statsmodels
-  - tqdm
-  - jupyterlab
+  - requests
+  - pytest
   - pip:
-      - sequence-jacobian
+      - wrds   # Orbis extraction only (03_Empirical/02_Orbis/01_Cleaning)

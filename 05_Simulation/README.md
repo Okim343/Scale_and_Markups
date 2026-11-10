@@ -3,12 +3,12 @@
 This folder owns the structural model (package `orbis_model`) and everything that runs it at given
 parameters: the cross-section simulation and the market vs planner welfare comparison. The calibration
 lives in `04_Estimation/`, which imports `orbis_model`; the dependency runs one way, estimation to
-simulation. The code is a port of `04_Code/steady_state/` (model, simulation, welfare, figures) with the
-model equations, solvers, anchoring, GE normalization, parallel backend and welfare formulas unchanged.
-Nothing here imports from `04_Code/`.
+simulation. It descends from the retired Compustat package (`04_Code/steady_state`, now archived
+outside the repository) with the model equations, solvers, anchoring, GE normalization, parallel backend
+and welfare formulas unchanged.
 
-Targets and model inputs come from the Orbis Spain bundle; their definitions and the decisions behind them
-are in [`02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MOMENTS.md`](../02_Drafts/md_files/ORBIS_migration/ORBIS_SPAIN_MOMENTS.md).
+Targets and model inputs come from the Orbis Spain bundle, documented in
+[`03_Empirical/README.md`](../03_Empirical/README.md).
 
 ## Inputs
 
@@ -35,6 +35,10 @@ python 03_fixed_input_welfare.py [--M 400] [--seed S] [--out-dir D] [--skip-full
 python 04_sorting_sweep.py [--M 400] [--seed S] [--out-dir D] [--fig-dir D] [--welfare-ref-dir D] [--fixed-input-ref-dir D] [--grid r1,r2] [--labels a,b] [--validation-only]
 python 05_planner_expansion.py [--welfare-dir D] [--fixed-input-dir D] [--out-dir D] [--corr-target X | --sorting-dir D]
 python 06_level_dispersion.py --reference-draw-policy draw_pool_truncated_v1 [--sorting-dir D] [--workers N] [--out-dir D]
+python 07_heterogeneity_anatomy.py --reference-draw-policy draw_pool_truncated_v1 [--level-dispersion-dir D] [--labels a,b] [--workers N]
+python 08_recalibrated_anatomy.py --params hom_alpha=FILE --params hom_v=FILE --params hom_both=FILE [--params baseline=FILE] [--labels a,b] [--workers N] [--assemble-only]
+python 09_recalibrated_channels_figure.py [--in-dir D] [--fig-stem STEM]
+python 10_sorting_markup_moments.py --M N --sweep-dir D [--out-dir D] [--labels a,b]
 python -m orbis_model.figures.simulation_figures --results-dir out_results [--window 2015_2019]
 ```
 
@@ -45,9 +49,13 @@ python -m orbis_model.figures.simulation_figures --results-dir out_results [--wi
 | `03_fixed_input_welfare.py` | fixed-input planner chain ME -> PE_I -> PE_K -> PE on the draws and mask of `02_welfare.py` (see below) | in `fixed_input/`: `fixed_input_regimes_<window>.parquet`, `fixed_input_welfare_<window>.yaml`, `sim_panel_planner_fixed_input_<window>.parquet`, `sim_panel_planner_fixed_k_<window>.parquet`, `fixed_input_manifest_<window>.yaml` |
 | `04_sorting_sweep.py` | both welfare lenses across alpha<->v arrangements: copula re-draws over rho_bar, within-sector permutations, homogeneous alpha (see below) | in `sorting/`: `sorting_economies.parquet`, `sorting.yaml`, `results.md`, `validation.json`, `checkpoint_<label>.json`; `out_figs/sorting/sorting_curve.{pdf,png}` |
 | `06_level_dispersion.py` | four market/planner pairs with capability/scalability common or heterogeneous; fresh baseline and common-scalability gates against saved sorting results | in `level_dispersion/`: economy checkpoints, frozen calibration, provenance and validation, `level_dispersion_economies.parquet`, `level_dispersion.yaml`, and the two-panel `results.md` |
+| `07_heterogeneity_anatomy.py` | both welfare lenses for the four economies of 06 (heterogeneity collapsed in one draw at the baseline parameters); its baseline checkpoint is a gate for 08 | in `heterogeneity_anatomy/`: checkpoints, legs, `results.md` |
+| `08_recalibrated_anatomy.py` | both welfare lenses for the four economies of Table 2, each refit by `04_Estimation/03_calibrate_restricted.py`; the baseline must reproduce 02, 03 and 07 | in `recalibrated_anatomy/`: checkpoints, `recalibrated_anatomy_economies.parquet`, `recalibrated_legs.csv`, `recalibrated_anatomy.yaml`, `results.md` |
+| `09_recalibrated_channels_figure.py` | Figure 2 of the paper, the walk from the homogeneous economy to the baseline stacked by both lenses | `02_Drafts/figures/orbis/fig_recalibrated_channels_orbis_zipf.{pdf,png}` |
+| `10_sorting_markup_moments.py` | re-solves only the market of every sorting arrangement on the sweep's draws and records markup spread and placement (the markup columns of Table 3); each market is checked against the sweep row | in `<sweep-dir>/markup_moments/`: one JSON per arrangement, `sorting_markup_moments.parquet` |
 | `orbis_model/figures/simulation_figures.py` | lambda-contribution heatmap and markup distribution from the welfare outputs | `out_figs/welfare/<tag>/` |
 
-## Zipf calibration
+## Zipf calibration (the paper)
 
 `config_simulation_zipf.yaml` runs the suite on the market-free calibration (`04_Estimation/01_calibrate_zipf.py`,
 params `04_Estimation/out_results/zipf/job3162/calibrated_params_zipf.yaml`). It is a copy of
@@ -60,6 +68,16 @@ run on the same M, seed and params file instead of the default (the calibrated c
 `06_level_dispersion.py` takes M and seed from its sorting reference (`--sorting-dir`) and rebuilds that
 draw with `draw_pool` (policy `draw_pool_truncated_v1`); sorting results saved before the switch from
 clipped to truncated alpha draws (commit d7c8300) cannot pass its gates.
+
+Run order for the paper, all with `--config config_simulation_zipf.yaml`:
+
+| Paper object | Chain |
+|---|---|
+| Table 3, Figure 3, Figure B1 | `02_welfare.py --M 10000` and `03_fixed_input_welfare.py --M 10000` (gate references), `04_sorting_sweep.py --M 10000`, then `10_sorting_markup_moments.py --M 10000 --sweep-dir <sorting out>` |
+| Table 2, Figure 2 | `06_level_dispersion.py` and `07_heterogeneity_anatomy.py` on a sorting reference, `08_recalibrated_anatomy.py` with the restricted params files, then `09_recalibrated_channels_figure.py`. The gates compare the baseline across steps, so 02, 03, 04, 06, 07 and 08 run at the same M and seed (M = 5000 in the paper) |
+
+The sweep writes `sorting_curve` and `sorting_lenses` to `out_figs/zipf/sorting/`. The paper uses copies of
+them in `02_Drafts/figures/orbis/` named `fig_sorting_curve_orbis_zipf.pdf` and `fig_sorting_lenses_orbis_zipf.pdf`.
 
 Every manifest records the bundle sha256s, the bundle manifest sha256, the config sha256, the params file
 sha256, the git commit and dirty flag, M and the seed.
@@ -74,14 +92,14 @@ all firms of all markets; defined exactly as `rts_gap` in
 
 ## Fixed-input planner
 
-`03_fixed_input_welfare.py` ports `04_Code/counterfactuals/fixed_input_welfare` and extends it to
+`03_fixed_input_welfare.py` extends the fixed-capital planner of the Compustat version to
 materials. Every allocation imposes P = 1 and L = 1. The chain is
 
 | Regime | Label | Pinned | Freed price |
 |---|---|---|---|
 | ME | `market` | (market allocation) | |
 | PE_I | `planner_fixed_input` | K = K_ME, M = M_ME | R and the shadow materials price P_mat |
-| PE_K | `planner_fixed_k` | K = K_ME (the 04_Code object) | R |
+| PE_K | `planner_fixed_k` | K = K_ME | R |
 | PE | `planner` | nothing beyond L = 1 (the `02_welfare.py` planner) | |
 
 P_mat replaces P = 1 inside the gross-output unit cost `Omega^g(w, R, P_mat)`, as R does for capital;
@@ -101,7 +119,7 @@ rather than its CES demand share; `closure_residual` is zero up to rounding.
 
 ## Sorting sweep
 
-`04_sorting_sweep.py` ports `04_Code/counterfactuals/sorting_curve` (code only). On the draws, seed and
+On the draws, seed and
 Poisson mask of `02_welfare.py`, each arrangement solves ME, PE_I, PE_K and PE
 (`solve_fixed_input_chain`) and the uniform-markup U (`two_channel_decomposition`, mu_bar = that
 arrangement's market `mu_cw`), and reports Lens A (`realloc`, `materials`, `capital`) and Lens B (`disp`,
@@ -152,7 +170,7 @@ written to pytest temporary folders. `tests/fixtures/legacy_anchored_mc_fixture.
 
 ## Cluster
 
-`cluster/` (gitignored, local only, like `04_Code/marvin2/`) holds `submit_welfare.sh` and the Marvin2
+`cluster/` (gitignored, local only) holds `submit_welfare.sh` and the Marvin2
 copy of the config (`config_simulation_marvin2.yaml`, `solver.parallel.n_jobs` pinned to 16). The job reads
 the cluster copy, not the local config: edit both. Run python directly, not via `srun`. Sync with
 `04_Estimation/cluster/sync_to_marvin2.sh`; submit from this folder with `sbatch cluster/submit_welfare.sh`
@@ -161,9 +179,3 @@ after the calibration job. The lab workstation scripts (`submit_*_workstation.sh
 `03_fixed_input_welfare.py` (24 CPUs, 64G); `submit_sorting_workstation.sh M [OUT_DIR]` reruns
 `02_welfare.py` and `03_fixed_input_welfare.py` as gate references (skip with `SKIP_REFS=1`) and then
 `04_sorting_sweep.py` (24 CPUs, 64G; about 1.5 to 2 h at M = 10000).
-
-## Not ported yet
-
-The counterfactual packages of `04_Code/counterfactuals/` will be ported later, apart from
-`fixed_input_welfare` (now `03_fixed_input_welfare.py`) and `sorting_curve` with the permutation and
-homogeneous-alpha parts of `scalability_sorting` and `homogeneous_rts` (now `04_sorting_sweep.py`).

@@ -23,7 +23,7 @@
 
 #show: paper.with(
   meta: (
-    title: [Market Power and the Scalability of Firms],
+    title: [Who Carries the Markups? \ Scalability, Sorting, and \ the Welfare Cost of Market Power],
     authors: (
       (
         name: "Enrico Truzzi",
@@ -40,7 +40,7 @@
     heading-font: "New Computer Modern",
   ),
   layout: (
-    maketitle: false,
+    maketitle: true,
     // The template leaves the abstract box (86% wide) left-aligned, which
     // looks off-centre; full text width keeps it flush with the margins.
     cover-text-width: 100%,
@@ -87,9 +87,9 @@
 
 
 
-#v(0.5cm)
+#v(0.375cm)
 = Introduction
-#v(0.2cm)
+#v(0.15cm)
 
 Firm heterogeneity plays a key role in the current literature addressing the rise in market power, in particular in explaining the documented rise in markups over recent decades. Seminal models of firm heterogeneity, such as #cite(form:"prose",<melitz2003impact>), #cite(form:"prose",<atkeson2008pricing>) and #cite(form:"prose",<hsieh2009misallocation>), make firm size depend on productivity alone, and in #cite(form:"prose",<atkeson2008pricing>) more productive firms also capture larger market shares and therefore charge higher markups. Heterogeneous markups then distort both the allocation of demand across firms and the overall level of production #cite(<baqaee2020productivity>) #cite(<edmond2023costly>) #cite(<de2020rise>). Such models normally assume homogeneous _returns to scale_ (_RTS_) across firms, letting heterogeneity in _total factor productivity_ (_TFP_) explain most of the origin of firm markups. Recent works such as #cite(form:"prose",<lashkari2024information>), #cite(form:"prose",<argente2025scalable>), #cite(form:"prose",<demirer2025production>) and #cite(form:"prose",<hubmer2025scalable>), however, have shown that firms differ in how easily they scale, and that this heterogeneity plays an important role in explaining key facts of firm dynamics previously associated with TFP differences. In particular, #cite(form:"prose",<hubmer2025scalable>) find in their quantitative implementation that heterogeneity in RTS more than doubles the efficiency losses from financial frictions, compared with an economy where firms differ in TFP alone.
 
@@ -110,16 +110,16 @@ To understand where this cost comes from, I split the welfare gap in two separat
 To measure how much the pairing matters for this complementarity, I hold the calibrated parameters and both marginal distributions fixed and vary only the strength of the rank copula, together with within-sector permutations that implement perfect negative and positive pairing and random reassignment. I find that the pairing moves the welfare gap by far more than any dimension of heterogeneity, with $lambda$ rising from $9.0%$ under perfect negative pairing to $50.3%$ under random reassignment and $152.3%$ under perfect positive pairing. The response is S-shaped in the correlation between scalability and productivity and steepest around the calibrated economy, such that $lambda$ doubles as the correlation moves from $-0.35$ to the calibrated $-0.14$, which makes the RTS gap that identifies sorting a first-order determinant of the cost of markups. Concluding that positive sorting lowers welfare would, however, be incorrect, since welfare rises with sorting in both the market and the planner allocation, with the gap widening because the planner rises faster.
 
 Using the same two welfare gap decompositions as before, I find that sorting raises the cost of markups through two channels. The first is market power, since aligning scalability with productivity lets the most productive firms expand further, raising both the aggregate markup and the spread of markups. The second is the reallocation of inputs towards scalable firms, whose output responds most to a given markup. Consequently, the dispersion component grows from zero under strongly negative sorting to about half of the gap at the top, and misallocation to about a quarter, while capital remains the largest component throughout.
-#v(0.3cm)
+#v(0.225cm)
 *Related Literature.* This paper contributes to three strands of literature. The first quantifies the aggregate cost of markups when firms are heterogeneous, where #cite(<edmond2015competition>, form: "prose"), #cite(<peters2020heterogeneous>, form:"prose"), #cite(<edmond2023costly>, form: "prose") and #cite(<deloecker2021quantifying>, form: "prose") measure it with a common returns to scale across firms. I add heterogeneity in returns to scale disciplined by production-function estimates, and show that the same markups are far more costly when they sit on scalable firms. The second strand documents that firms differ in their returns to scale. #cite(<hubmer2025scalable>, form: "prose") and #cite(<demirer2025production>, form: "prose") estimate production functions whose output elasticities, and thus returns to scale, vary across firms, with #cite(<hubmer2025scalable>, form: "prose") showing that returns to scale rise with size at the top of the distribution, while #cite(<kariel2024scale>, form: "prose") and #cite(<baqaee2024darwinian>, form: "prose") study the aggregate implications of scale economies. A related literature traces scalability to information technology #cite(<lashkari2024information>), scalable expertise #cite(<argente2025scalable>) and intangible inputs #cite(<deridder2024market>). I contribute to this strand by embedding returns to scale estimated on Spanish firms in an oligopoly with endogenous markups, which shows that returns to scale determine how much output a given markup withholds, and therefore the welfare cost of market power. Finally, #cite(<restuccia2008policy>, form: "prose"), #cite(<hsieh2009misallocation>, form: "prose") and #cite(<baqaee2020productivity>, form: "prose") show that wedges matter for aggregate outcomes through their covariance with producer characteristics, while #cite(<david2019sources>, form: "prose"), #cite(<ruzic2023returns>, form: "prose") and #cite(<zhang2022misallocation>, form: "prose") show that heterogeneity in technologies and markups changes how misallocation should be measured. In this paper, the sorting between productivity and scalability endogenously places the largest markups on the firms that can expand most easily, which accounts for a substantial share of the welfare gap.
 
 
 
-#v(0.5cm)
+#v(0.375cm)
 = Theory
-#v(0.2cm)
+#v(0.15cm)
 == Households
-#v(0.2cm)
+#v(0.15cm)
 
 *Household problem.* Time is discrete. There is a unit mass of identical households. The representative household consumes the final good $C_t$, supplies labor $L_t$, owns a diversified portfolio of firms, and rents capital services to producers at the competitive rental rate $R_t$. Firms also purchase the aggregate composite as materials. The household accumulates capital according to
 #math.equation(block:true, numbering: none, $K_(t+1) = (1-delta_K) K_t + I_t,$)<eq:k_lom> The intertemporal first-order condition equates the marginal rate of substitution to the net return on capital, $U_C(C_t,L_t) = beta E_t [U_C (C_(t+1),L_(t+1))
@@ -130,7 +130,7 @@ Equation @eq:euler_R holds in the market allocation and in the planner allocatio
 with period utility
 #math.equation(block:true, numbering: none, $U(C_t,L_t) = ln C_t - chi frac(L_t^(1 + 1/phi), 1 + 1/phi), quad chi > 0, phi >= 0.$)<eq:utility>
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Aggregate composite.* The aggregate composite#footnote[*Notation.* Sector, market, and firm indices are written as subscripts: $Y_j$, $P_j$, $omega_j$, $A_j$, $n_j$ for sector-level objects, and $s_(j i)$, $mu_(j i)$, $y_(j i)$, $p_(j i)$ for firm $i$ in sector $j$. This matches the numerical implementation, where sectors are a finite simulated sample $j = 1, dots, J$ and aggregates are sums $sum_(j=1)^J$. In the underlying theory, however, sectors are a continuum $j in [0,1]$, so these objects are properly fields over the unit interval ($Y(j)$, $P(j)$, $omega(j)$, $s(j,i)$, and so on), with population aggregates given by integrals $integral_0^1 dot.c d j$ rather than sums. The subscript form is used purely for readability; it carries no discreteness assumption at the theory level.] is produced from a continuum of product markets $j in [0,1]$ with exposure weights $omega_j$:
 #math.equation(block:true, $Q_t = [integral_0^1 omega_j^(1/eta) Y_(j,t)^((eta-1)/eta) d j]^(eta/(eta-1)), quad eta > 1,$)<eq:agg_ces>
@@ -142,9 +142,9 @@ which in a steady state, where $I = delta_K K$, reads $C = Q - M - delta_K K$.
 The exposure weight $omega_j$ summarizes how much aggregate expenditure is exposed to product market $j$ and is normalized so that $integral_0^1 omega_j d j = 1$. In the current baseline the simulated sectors are pooled with normalized exposure weights so they all have the same weight. Materials are purchases of the same composite at price $P_t$. The expenditure allocated to market $j$ is $X_(j,t) equiv P_(j,t) Y_(j,t)$, and the corresponding demand schedule loads on total composite use:
 #math.equation(block:true, numbering: none, $Y_(j,t) = omega_j (P_(j,t)/P_t)^(-eta) Q_t.$)<eq:sector_demand>
 
-#v(0.5cm)
+#v(0.375cm)
 == Demand and Market Shares
-#v(0.2cm)
+#v(0.15cm)
 
 *Nested demand structure.* There is a continuum of finite sectors indexed by $j in [0,1]$. Each sector is one product market. Let $X_(j,t)$ denote composite expenditure assigned to sector $j$. Within sector $j$ a finite number $n_(j,t)$ of firms compete. Firm $i in {1, ..., n_(j,t)}$ supplies quantity $y_(j i,t)$ and charges price $p_(j i,t)$. Conditional on sector expenditure, the within-sector composite good is CES. Throughout the baseline I write the aggregator and its price index with an explicit $1 slash n_(j,t)$ weight that removes mechanical love of variety#footnote[Under symmetry, $n$ firms each producing $y$ would deliver an unweighted composite $n^(gamma/(gamma-1)) y$, which rises with the number of firms at fixed per-firm output. The weight removes this term and yields $Y_(j,t) = y$, so that only reallocation and heterogeneity gains remain. Conditional on sector expenditure $X_(j,t)$, it rescales $Y_(j,t)$ and $P_(j,t)$ by reciprocal powers of $n_(j,t)$ and leaves every firm-level quantity, price, share, markup and profit unchanged. Only the within-sector nest carries this normalization, since the exposure weights $omega_j$ are fixed and @eq:agg_ces has no variety margin.], where $n_(j,t) equiv |A_(j,t)|$ is the realized number of allocated producing firms (the set $A_(j,t)$ is defined in @sec:market_structure below):
 #math.equation(block:true, $Y_(j,t) = [sum_(i in A_(j,t)) frac(1, n_(j,t)) y_(j i,t)^((gamma-1)/gamma)]^(gamma/(gamma-1)), quad gamma > eta,$)<eq:market_ces>
@@ -152,7 +152,7 @@ with price index
 #math.equation(block:true, numbering: none, $P_(j,t) = [(frac(1, n_(j,t)))^gamma sum_(i in A_(j,t)) p_(j i,t)^(1-gamma)]^(1/(1-gamma)) = n_(j,t)^(gamma/(gamma-1)) [sum_(i in A_(j,t)) p_(j i,t)^(1-gamma)]^(1/(1-gamma)).$)<eq:market_price>
 The within-market elasticity of substitution $gamma$ is common across markets: it governs how aggressively firms inside a market substitute against one another. The across-market elasticity $eta$ is a single global object governing substitution across product markets.
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Shares and markups.* The conditional demand for firm $i$ in market $j$ is therefore
 #math.equation(block:true, $y_(j i,t) = (frac(1, n_(j,t)))^gamma (p_(j i,t)/P_(j,t))^(-gamma) Y_(j,t),$)<eq:firm_demand>
@@ -163,9 +163,9 @@ Finite-firm competition implies that firms internalize the effect of their own q
 #math.equation(block:true, $frac(1,mu_(j i,t)) = 1 - frac(1,gamma) - (frac(1,eta) - frac(1,gamma)) s_(j i,t).$)<eq:emx_markup>
 Equation @eq:emx_markup is the key pricing object in the model. Because $gamma > eta$, the coefficient on $s_(j i,t)$ is negative, implying that firms with larger market shares face less elastic residual demand and charge higher markups. With a common $gamma$, the within-sector markup floor as $s_(j i,t) -> 0$ is the same across sectors, $mu_min = gamma/(gamma-1)$; all heterogeneity in realized markups comes from endogenous market shares, which in turn reflect the distribution of firm draws within each sector and the exogenous sector firm count. The detailed Cournot derivation is relegated to the appendix.
 
-#v(0.5cm)
+#v(0.375cm)
 == Firms and Technology
-#v(0.2cm)
+#v(0.15cm)
 
 *Heterogeneity.* Firms differ along two dimensions. First, they differ in scalability, indexed by $alpha_(j i)$, which governs gross-output returns to scale and how fast marginal cost rises with output. Second, they differ in fundamental productivity, indexed by $nu_(j i)$, the inverse-marginal-cost shifter that fixes each firm's marginal cost at a common anchor output $hat(y)$: a higher $nu_(j i)$ means a lower marginal cost at the anchor. Fundamental productivity $nu_(j i)$ is distinct from the production-function TFP coefficient $z_(j i)$ introduced below. The empirical strategy treats $alpha_(j i)$ as externally disciplined and treats $nu_(j i)$ as the productivity primitive. Henceforth, productivity refers to $nu_(j i)$. The dependence between $alpha$ and $nu$ is introduced only through ranks. Let $tilde(alpha)_(j i)$ be the standard-normal score of firm $i$'s scalability rank in sector $j$, and let $epsilon_(j i) ~ N(0,1)$. The productivity ladder is
 #math.equation(block:true, $ell_(j i) = macron(rho) tilde(alpha)_(j i) + sqrt(1 - macron(rho)^2) epsilon_(j i),$)<eq:nu_ladder>
@@ -173,7 +173,7 @@ and the ladder percentile is mapped into a Pareto productivity draw,
 #math.equation(block:true, $u_(j i) = Phi(ell_(j i)), quad nu_(j i) = underline(nu) (1 - u_(j i))^(-1/xi), quad xi > 1.$)<eq:nu_pareto>
 The Pareto tail index $xi$ is calibrated to the tail indices of firm sales, the lower bound $underline(nu)$ is a units-fixing scale solved by the baseline anchoring condition (not moment-targeted), and the alignment of $nu$ with $alpha$ is set through the calibrated rank-copula parameter $macron(rho)$, which fixes the strength of the $alpha$--$nu$ rank copula. It is identified by the gap in mean returns to scale between the top 5% and the bottom 50% of firms by sales, $0.046$, a directly observed cross-sectional moment requiring no productivity proxy and no data-side level anchor (see @sec:calibration).
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Technology and Anchoring.* Let $phi.alt_v$ denote the value-added weight. Production in firm $i$ of market $j$ is gross output, combining the value-added composite $v_(j i,t) equiv k_(j i,t)^(a) l_(j i,t)^(1-a)$ with materials $m_(j i,t)$ in a constant-returns Cobb-Douglas input bundle $x_(j i,t) equiv v_(j i,t)^(phi.alt_v) m_(j i,t)^(1-phi.alt_v)$:
 #math.equation(block:true, $y_(j i,t) = z_(j i) x_(j i,t)^(alpha_(j i)), quad x_(j i,t) = v_(j i,t)^(phi.alt_v) m_(j i,t)^(1-phi.alt_v), quad v_(j i,t) = k_(j i,t)^(a) l_(j i,t)^(1-a), quad phi.alt_v in (0,1).$)<eq:production>
@@ -181,7 +181,7 @@ The parameter $a$ is the common capital share inside value added. The value-adde
 #math.equation(block:true, $z_(j i) = (nu_(j i) \/ alpha_(j i))^(alpha_(j i)) hat(y)^(1 - alpha_(j i)),$)<eq:relabel>
 so @eq:production, the input bundle, and the conditional input demands are algebraically unchanged. Only the distributional assumption moves: the common Pareto is now asserted on the dimensionally coherent cost shifter $nu_(j i)$ (marginal cost at the common anchor $hat(y)$) rather than on $z_(j i)$, whose units differ across firms when $alpha_(j i)$ differs.
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Cost minimization.* Cost minimization in the inner value-added problem implies the common unit cost index
 #math.equation(block:true, $Omega(W_t,R_t) = (R_t/a)^(a) (W_t/(1-a))^(1-a).$)<eq:omega>
@@ -196,7 +196,7 @@ Cost minimization also gives the conditional input demands
 #math.equation(block:true, $P_t m_(j i,t) = (1-phi.alt_v) T C_(j i,t), quad W_t l_(j i,t) + R_t k_(j i,t) = phi.alt_v T C_(j i,t), quad frac(k_(j i,t),l_(j i,t)) = frac(a,1-a) frac(W_t,R_t).$)<eq:input_demand>
 Equation @eq:marginal_cost makes the role of scalability transparent. The scale term $(y/hat(y))^(1/alpha_(j i)-1)$ shows that a larger $alpha_(j i)$ flattens marginal cost with respect to output around the anchor and allows the firm to expand more aggressively before costs rise sharply.
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Pricing and profits.* Conditional on demand, the equilibrium pricing condition is
 #math.equation(block:true, $p_(j i,t) = mu_(j i,t) M C_(j i,t)(y_(j i,t)).$)<eq:pricing>
@@ -204,15 +204,15 @@ Profits can then be written as
 #math.equation(block:true, $d_(j i,t) = p_(j i,t) y_(j i,t) - T C_(j i,t)(y_(j i,t)) = (1 - alpha_(j i) / mu_(j i,t)) p_(j i,t) y_(j i,t).$)<eq:profits>
 Together, @eq:firm_demand, @eq:emx_markup, and @eq:pricing form a fixed-point system inside each market: quantities determine shares, shares determine markups, and markups feed back into prices and quantities through marginal cost.
 
-#v(0.5cm)
+#v(0.375cm)
 == Market Structure and Decentralized Equilibrium<sec:market_structure>
-#v(0.2cm)
+#v(0.15cm)
 
 *Market Structure.* Each sector $j$ receives an exogenous number of producing firms,
 #math.equation(block:true, $n_(j,t) = max(1, "Poisson"(N)),$)<eq:poisson_count>
 where $N$ is a calibrated primitive and is interpreted as the mean number of firms per sector#footnote[The numerical implementation reserves $H$ firm slots per market, with $H$ large enough that the Poisson count rarely reaches it.]. Conditional on this draw, the set $A_(j,t) = {1, dots, n_(j,t)}$ contains the firms priced in the sector Cournot problem. All allocated firms produce in the static cross section. There is no per-period fixed production cost and no profitability-based removal of firms.
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Equilibrium.* Given the aggregate state $K_t$, the exogenous sector counts, and the distributions of $(alpha_(j i),nu_(j i))$, a decentralized equilibrium is a sequence of household allocations, firm allocations, prices, market shares, and sector firm sets such that (i) households optimize given prices and firm payouts, (ii) firms satisfy demand @eq:firm_demand and markup pricing @eq:pricing, (iii) each sector firm set $A_(j,t)$ is the exogenous Poisson allocation in @eq:poisson_count, (iv) composite feasibility holds as in @eq:resource, with materials clearing through $M_t = integral_0^1 sum_(i in A_(j,t)) m_(j i,t) d j$ and the aggregate price level normalized by $P_t equiv 1$, and (v) labor and capital services clear,
 #math.equation(block:true, $L_t = integral_0^1 sum_(i in A_(j,t)) l_(j i,t) d j,$)<eq:labor_market>
@@ -220,9 +220,9 @@ where $N$ is a calibrated primitive and is interpreted as the mean number of fir
 
 Aggregate accounting closes because gross sales equal $P_t Q_t$, variable cost equals factor payments plus materials purchases, and profits are the residual. Hence value added satisfies $P_t (Q_t-M_t) = P_t (C_t + I_t) = W_t L_t + R_t K_t + Pi_t$, since materials net out as intra-economy purchases and @eq:resource assigns the rest of the composite to consumption and investment.
 
-#v(0.5cm)
+#v(0.375cm)
 == Planner's Allocation and Welfare<sec:planner_welfare>
-#v(0.2cm)
+#v(0.15cm)
 
 *Planner Problem.*  The planner faces the same technology, the same exogenous sector firm sets, and the same distributions of scalability and latent productivity.
 The difference is that the planner does not treat markup pricing as a technological constraint. Instead, the planner allocates labor, capital services,
@@ -238,42 +238,42 @@ denote the planner's marginal contribution of one additional unit of firm output
 #math.equation(block:true, $U_C(C_t,L_t) psi_(j i,t) (partial y_(j i,t))/(partial m_(j i,t)) = U_C(C_t,L_t).$)<eq:planner_materials_foc>
 The planner equalizes the social marginal value of labor and capital across product lines, accounting for heterogeneity in scalability and productivity, and uses materials until their marginal product equals the value of the composite diverted from consumption. Because $psi_(j i,t)$ comes from the same demand system as the decentralized equilibrium, planner and market share a common inverse-demand structure and differ only in the markup wedge in pricing#footnote[@sec:planner_appendix gives $psi_(j i,t)$ explicitly and maps it through the nested CES structure.].
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Regime invariance and the welfare scale.* Every allocation considered below is solved under the same two normalizations, $P = 1$ and $L = 1$, and at the same
 required return @eq:euler_R. Labor is therefore pinned across regimes while capital is free in both the market and the planner allocation: by
 @eq:factor_aggregates, the aggregate capital stock is whatever firms demand at $R$. Lifetime welfare $W^x$ of an allocation $x$ is the household objective evaluated at that allocation, and the consumption-equivalent gain from moving from the market (ME) to the planner (PE) allocation is the scalar $lambda$ that, applied to market consumption in every period, raises market welfare to $W^(P E)$. The labor-disutility weight $chi$ is held at its baseline market value in every regime, and since $L = 1$ in every regime, the disutility term is common, such that with log utility over consumption the gain reduces exactly to
 #math.equation(block:true, $1 + lambda = C^(P E) / C^(M E).$)<eq:lambda_is_C_ratio>
 Because the planner keeps the producing firm sets $A_j$ of the market#footnote[Because the static cross section has exogenous firm counts, the planner does not re-select firms, so a full entry counterfactual is left outside the welfare exercise. The rationale behind this omission is the #cite(<edmond2023costly>, form:"prose") finding that the entry wedge is quantitatively small relative to the markup-level and misallocation channels.], $lambda$ measures the welfare cost of markup pricing at given producers, which I quantify for the calibrated economy in @sec:welfare and trace back there to the margins of the allocation that markups distort.
-#v(0.5cm)
+#v(0.375cm)
 = Quantification
 
-#v(0.5cm)
+#v(0.375cm)
 == Pooled-Market Steady State<sec:steady_state>
-#v(0.2cm)
+#v(0.15cm)
 
 *Inner-market and Pooled aggregation block.* I now characterize the steady state as a nested system. Time subscripts are dropped, the aggregate price index is normalized to $P = 1$, and the distorted market steady state is written under the labor normalization $L = 1$. The resulting equilibrium is then used to pin down the labor-disutility weight $chi$, after which the market and planner steady states can be compared in common units. Conditional on sector $j$, the exogenous firm count $n_j$, and the realized firm draws $(alpha_(j i), nu_(j i))_(i in A_j)$, the steady-state market equilibrium solves jointly for firm quantities, prices, shares, markups, profits, and input demands through @eq:firm_demand, @eq:emx_markup, @eq:pricing, @eq:profits, and @eq:input_demand. The $alpha$ draw comes from $F^alpha$ and the productivity draw $nu$ follows @eq:nu_ladder and @eq:nu_pareto. Sector outcomes aggregate through the exposure-weighted CES bundle in @eq:agg_ces, with equal $omega_j$ across markets in the quantitative implementation. Consumption is $C = Q - M - delta_K K$, net of materials and replacement investment.
 
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Capital and factor-market block.* Aggregating the conditional input demands @eq:input_demand over the continuum of markets gives aggregate factor use as a function of aggregate variable cost $T C equiv integral_0^1 sum_(i in A_j) T C_(j i) d j$ alone. Only the fraction $phi.alt_v$ of variable cost is a primary-factor payment; the remaining $1-phi.alt_v$ buys materials of the
 composite at $P = 1$:
 #math.equation(block:true, $K = frac(a phi.alt_v "TC", R), quad L = frac((1-a) phi.alt_v "TC", w), quad M = (1-phi.alt_v) "TC", quad C = Q - M - delta_K K.$)<eq:factor_aggregates>
 With $R$ fixed at @eq:euler_R, @eq:factor_aggregates makes the aggregate capital stock a residual: whatever quantity firms demand at the Euler rate is supplied. The anchored steady-state equilibrium is therefore a three-dimensional fixed point in $(w, X, underline(nu))$, where $X$ is composite expenditure per market and $underline(nu)$ is the productivity scale. The three residuals are the price normalization $P = 1$, the labor normalization $L = 1$, and the median active-firm output condition $tilde(y) = hat(y) equiv 1$. The rental rate is not among the unknowns.
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Normalization and steady-state welfare block.* At each candidate parameter vector, the distorted market steady state is anchored by the normalizations $P = 1$ and $L = 1$, together with the baseline anchoring condition that the median active-firm output equals the common anchor, $tilde(y) = hat(y) equiv 1$, imposed as one equilibrium condition of the baseline market solve#footnote[This condition pins the productivity scale $underline(nu)$ (the Pareto lower bound) as a by-product of its level normalization.]. Conditional on assigned parameters and on the anchored productivity distribution, the market solve pins down the wage-consumption ratio and therefore the labor-disutility weight $chi = w / C,$
 using the market labor-leisure condition under $L = 1$ and $C = Q - M - delta_K K$. Once this baseline calibration step is complete, the planner and market steady states are re-solved in common units while holding the primitive objects fixed. The planner and market allocations therefore share the same $(beta, delta_K, a, phi.alt_v, hat(y), alpha_(j i), nu_(j i), N, xi, gamma, eta, macron(rho), H)$ and differ only through the presence or absence of the aggregate-markup and dispersion distortions. This is what makes the later welfare comparison interpretable as a comparison across allocations rather than across calibrations.
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Frozen-anchor protocol.* The anchor $hat(y)$ and all firm draws $(alpha_(j i), nu_(j i))$ are fixed at the baseline and held frozen across the planner solve and every intermediate allocation of @sec:welfare_decomp: technology is then an ordinary allocation-independent object, so the planner faces literally the same $T C_(j i,t)(y)$ as the market and re-anchoring under the planner is structurally impossible. The recalibrated economies of @sec:welfare_baseline keep the same definition of the anchor, the median active-firm output, but solve it on their own draws, such that its value changes with each economy, while the sorting arrangements of @sec:sorting keep the baseline value. This follows the logic of the normalized-CES literature #cite(<klump2000economic>), in which technology families are normalized to coincide at a common benchmark before varying curvature parameters. The fixed-$hat(y)$ construction applies the same identification principle to heterogeneous returns to scale: all technologies agree on marginal cost at the reference output, so differences in $alpha$ affect only the curvature of marginal cost away from that operating point. I go beyond #cite(<klump2000economic>, form: "prose") by arguing that the benchmark must also be economically sensible, and the median is preferable to the sales-weighted mean in skewed distributions. Active-firm output is heavily right-skewed, so the sales-weighted mean is pulled deep into the tail of that distribution, exceeding the output of roughly 99.6% of active firms in the baseline draw, such that anchoring there would make $alpha_(j i)$ act, for nearly the entire firm population, as a mechanical penalty for being smaller than a handful of superstar firms. The median sidesteps this by construction, since it splits the active-firm population evenly on either side of $hat(y)$ regardless of how fat the right tail is, so $alpha_(j i)$ is disciplined by curvature around a typical operating scale rather than by distance from the largest incumbents.
 
-#v(0.5cm)
+#v(0.375cm)
 == Data and Measurement<sec:data>
-#v(0.2cm)
+#v(0.15cm)
 
 *Sample, Sales, and Markups.* I use Spanish Orbis firm-years from 2015--2019, with monetary values expressed in 2019 euros. The sample excludes NAICS2 codes 52/53/62/81 following #cite(form: "prose", <hubmer2025scalable>), 92/99 for being out of scope, and 55 for consisting of holding companies and head offices. Manufacturing (31--33), retail (44--45), and transportation (48--49) are grouped into single cells, leaving 14 NAICS2-based cells. The sales and markup sample contains 2,000,342 firm-years from 568,920 firms.
 
@@ -282,7 +282,7 @@ To measure the upper tail of firm size, I average each firm's real sales over th
 Firm-level markups follow the production-function approach of #cite(<de2020rise>, form: "prose"). Each firm-year markup is the cell-year estimated variable-input elasticity times the firm's sales divided by its materials and staff costs. I weight these markups by materials and staff costs plus capital user cost within each year, then average the five annual values. The resulting aggregate markup target is $1.1815$.
 
 
-#v(0.3cm)
+#v(0.225cm)
 
 *Scalability and Firm Size.* The distribution $F^alpha$ is not calibrated. It is built once in the empirical pipeline and the solver samples draws from its support. The firm-level object is the gross-output returns-to-scale estimate,
 #math.equation(block:true,numbering: none, $alpha_(j i) = epsilon^m_(j i) + epsilon^l_(j i) + epsilon^k_(j i),$)
@@ -306,16 +306,16 @@ In the model, $alpha$ alone does not deliver a size ordering: at the anchor $hat
 
 
 
-#v(0.5cm)
+#v(0.375cm)
 == Calibration<sec:calibration>
-#v(0.2cm)
+#v(0.15cm)
 
 *Parameters and targets.* In the $(alpha,nu)$-economy baseline the calibrated vector is $(xi, N, gamma, macron(rho))$, which targets four pooled scalars, namely the aggregate cost-weighted markup $mu_("cw")^("data") approx 1.18$, the firm-sales tail indices $zeta$ at the top 5% and top 2%, and the returns-to-scale gap between the top 5% and the bottom 50% of firms by sales. The within-market elasticity $gamma$ controls the common substitution environment and helps pin the markup level through the markup target, whose model analogue is #math.equation(numbering:none,block:true,$mu_("cw")^("model") = integral_0^1 sum_(i in A_j) lambda^c_(j i) mu_(j i) d j, quad lambda^c_(j i) equiv (T C_(j i))/(integral_0^1 sum_(h in A_j) T C_(j h) d j)$)
 , where $lambda^c_(j i)$ is firm $i$'s share of aggregate variable cost. The across-market elasticity $eta$ governs cross-sector substitution and is fixed at $1.2$, a value within the range of across-market elasticities in the literature #cite(<atkeson2008pricing>) #cite(<deloecker2021quantifying>) #cite(<edmond2015competition>). The Pareto tail index $xi$ of the fundamental productivity $nu$ and the Poisson mean $N$, which sets the mean number of firms in a sector, jointly discipline the upper tail of firm sales through the two tail indices, a choice motivated by the firm-size evidence of #cite(<axtell2001zipf>, form: "prose") and #cite(<gabaix2009power>, form: "prose"), and by the Zipf calibration in #cite(<di2012country>, form: "prose"). On the data side, these indices are OLS estimates on firm-mean sales over 2015--2019, normalized by the NAICS2 mean of firm means, and the model applies the same estimator to pooled active-firm sales. Orbis concentration measures are avoided as calibration targets, since #cite(<kalemli2024construct>, form: "prose") show that measured industry concentration depends on the representativeness of the firm sample, and concentration measures in general tend to be highly dependent on market definition, which is by itself subjective and can lead to severely different results#footnote[See #cite(<edmond2015competition>, form: "prose"), #cite(<deloecker2021quantifying>, form: "prose") among others.].
 
 The rank-copula parameter $macron(rho)$ sets the strength of the $alpha$--$nu$ dependence and is calibrated to the within-market returns-to-scale gap of $0.046$, the mean demeaned $alpha$ of the top 5% minus the bottom 50% of firms by sales within each NAICS4 market. This follows #cite(<hubmer2025scalable>, form: "prose"), who use the same top-5%-versus-bottom-50% RTS-gap statistic to help discipline the relationship between TFP and returns to scale in their calibration. They also meet the problem that the joint distribution of returns to scale and TFP cannot be read off the production-function estimates#footnote[Rescaling output and inputs by a factor $s$ shifts estimated log TFP $ln hat(z)_(j i)$ by the firm-specific amount $(1 - alpha_(j i)) ln s$, such that relative TFP across firms has no cardinal interpretation.], and choose to calibrate the correlation between the two internally rather than imposing the estimated one. The productivity scale $underline(nu)$ is not part of the calibrated vector, being solved by the baseline anchoring condition $tilde(y) = hat(y) equiv 1$, which centers the $alpha$-gradient at the operating scale rather than fighting the returns-to-scale gap moment. Objects treated as externally disciplined are the pooled scalability distribution $F^alpha$, the firm-level gross-output returns to scale $alpha_(j i)$, the value-added weight $phi.alt_v$, and the common capital share $a = 1 slash 3$ taken from #cite(<edmond2023costly>, form:"prose"). See @tab:param_ss for an overview of all parameters and their final values.
 
-#v(0.5cm)
+#v(0.375cm)
 
 *Calibration Results.* As shown in @tab:calib_fit, all four moment targets are hit to within $0.015%$, with the largest deviation being for the top-2% firm-sales tail index, around $0.014%$ off. As for the resulting parameter values, the within-market elasticity $gamma = 7.88$ implies a common CES markup floor of $1.145$. Thus, $gamma$ supplies most of the average markup wedge through the common CES floor ($80.1%$), with the remaining $19.9%$ coming from endogenous share-driven market power.
 
@@ -357,19 +357,19 @@ Matching the two firm-sales tail indices in the Cournot economy yields a Poisson
 Finally, the rank-copula parameter $macron(rho) = -0.166$ corresponds to corr$(nu, alpha) approx -0.14$ in the calibrated economy. Negative sorting places some high-$alpha$ firms with low-$nu$ firms at the small end of the sales distribution. Among firms that reach output above the anchor, higher $alpha$ lowers marginal cost as they expand, allowing high-$alpha$ firms to appear again at the top. This mechanism is consistent with the U-shaped RTS profile in @fig:alpha_by_size. The calibration directly matches the separately constructed top-versus-bottom RTS gap rather than the full profile. #cite(<hubmer2025scalable>, form: "prose") also obtain a negative calibrated correlation between TFP and returns to scale.
 
 
-#v(0.5cm)
+#v(0.375cm)
 = Welfare Analysis<sec:welfare>
 
-#v(0.5cm)
+#v(0.375cm)
 == Welfare Cost of Markups<sec:welfare_baseline>
-#v(0.2cm)
+#v(0.15cm)
 
 *Markup Distribution and Welfare Cost.* The calibrated $gamma = 7.88$ implies a common CES floor of $mu_min = gamma / (gamma - 1) approx 1.145$. Against the fitted aggregate markup of $1.182$, this floor contributes $80.1%$ of the average wedge above one and the share-driven component of @eq:emx_markup contributes $19.9%$. Weighting firms by cost, the 25th, 50th and 75th percentiles of firm markups, $1.146$, $1.148$ and $1.175$, lie close to the floor. The calibration matches sales tails from a broad Spanish Orbis sample. As mentioned above, its $N approx 604$ includes a large fringe of small active firms without a selection margin to drop them, leaving many Cournot shares small and markups near the floor. Firms with larger shares still form a thin upper tail. At the 90th and 99th percentiles, firm markups are $1.266$ and $1.529$, against $1.221$ and $1.331$ for sector markups, defined as the cost-weighted mean markup within each sector and ranked by sector cost. Therefore, an aggregate markup of $1.18$ can lower welfare through two rather different objects, namely a common wedge that almost every firm charges and a thin tail of large firms that charge far more, and which of the two dominates the welfare impact depends on how the planner would move production across these firms. Removing markups altogether raises steady-state consumption by $lambda = 32.3%$ in the calibrated economy, with the planner producing a gross composite $Q$ that is $72.8%$ larger than in the market, with $114.1%$ more capital (bottom row of @tab:welfare_hetero, Panel A). Since the distribution of markups comes from the heterogeneity of firms, the first question is how much of this cost is due to firms differing in productivity, in scalability or in both.
 
-#v(0.3cm)
+#v(0.225cm)
 *Counterfactual Economies.* To isolate the role of each dimension of heterogeneity, I compare the calibrated economy with three counterfactual economies, each recalibrated on its own free parameters to the targets it can reach, such that the comparison holds observables fixed rather than parameters. The $nu$-economy holds RTS common at the harmonic mean of $F^alpha$ and recalibrates $(xi, N, gamma)$, while the $alpha$-economy holds productivity common and the homogeneous economy holds both common, which leaves only $gamma$ to recalibrate. The calibration results and moment fit are displayed in @tab:recal_calib in the Appendix. All four economies match $mu_("cw")$, whereas only the baseline also matches the two Zipf indices and the $nu$-economy nearly matches them, since a bounded RTS distribution generates no Pareto tail in sales.#footnote[With common $nu$, size differences come only from $alpha$, and the capped, data-disciplined $F^alpha$ keeps every firm away from the singularity at $gamma slash (gamma - 1)$ where size diverges, so sales have no Pareto tail. #cite(<hubmer2025scalable>, form: "prose") obtain one only by letting returns to scale approach that bound.] Without a fat tail no firm reaches a sizeable share, such that markups collapse onto the CES floor and $gamma$ is pinned by the near-atomistic limit $gamma slash (gamma - 1) approx mu_("cw")$, which is why the homogeneous and $alpha$-economies share $gamma = 6.556$. As for the $nu$-economy fit, without heterogeneity in $alpha$, the Zipf indices must come from $nu$ alone, which requires a fatter productivity tail ($xi = 5.05$ against $9.50$). Within-market shares, and so $mu_("cw")$, then rise, and the fit offsets this by spreading sales over more firms per market ($N = 1998$).
 
-#v(0.3cm)
+#v(0.225cm)
 #figure(
   block(width: 100%)[
     #set text(size: 9pt)
@@ -398,7 +398,7 @@ Finally, the rank-copula parameter $macron(rho) = -0.166$ corresponds to corr$(n
       [*$(alpha,nu)$-Economy (Calibrated Baseline)*], [*72.78*], [*114.12*], [*32.04*],
       table.hline(stroke: 0.7pt),
     )
-    #v(0.15cm)
+    #v(0.1125cm)
     #table(
       columns: (3.8fr, 1.3fr, 1.35fr, 1.4fr),
       column-gutter: 0.22cm,
@@ -429,15 +429,15 @@ Finally, the rank-copula parameter $macron(rho) = -0.166$ corresponds to corr$(n
   ],
   caption: [Productivity, scalability, and the welfare cost of markups.],
 )<tab:welfare_hetero>
-#v(0.3cm)
+#v(0.225cm)
 
 *Which Heterogeneity Matters.* The most informative comparison is between the $nu$-economy and the calibrated baseline, which match the same markup level and nearly the same sales tails with almost the same $gamma$ ($7.78$ against $7.88$). Adding the observed heterogeneity in scalability on top of the $nu$-economy more than doubles the welfare cost of markups, from $14.3%$ to $32.3%$, while the homogeneous economy, at $10.8%$, gives the cost of a common markup of $1.18$ alone (@tab:welfare_hetero, Panel A). The output and capital responses of the planner follow a different ranking, as the $alpha$-economy expands the gross output by $39.1%$ and capital by $67.8%$, slightly more than the $nu$-economy ($36.5%$ and $61.3%$) despite its smaller welfare gap, while the baseline expands both by about twice as much as the homogeneous economy ($72.8%$ and $114.1%$, against $32.4%$ and $56.4%$). In every economy capital grows faster than output and output faster than consumption (equivalent to $lambda$ as per @eq:lambda_is_C_ratio), since the larger capital stock and materials use of the planner are paid for out of $Q$, with $C = Q - M - delta_K K$ in steady state, which suggests that heterogeneity in RTS raises the welfare cost mostly through how much more the planner would produce, a point to which I return in @sec:welfare_decomp. 
 
 Moving on to Panel B, the calibrated gain is split into the gain of the homogeneous economy, the gains of the $nu$- and $alpha$-economies over it and a residual joint interaction, such that the four contributions sum to $lambda$ by construction#footnote[The contributions are $lambda^"hom"$, $lambda^nu - lambda^"hom"$, $lambda^alpha - lambda^"hom"$ and $lambda^(alpha nu) - lambda^nu - lambda^alpha + lambda^"hom"$. Since every economy is recalibrated, each contribution compares economies that match the same targets, rather than switching one dimension off at given parameters.]. Each individual heterogeneity margin contributes little on its own, with $3.48$ percentage points from productivity dispersion and $2.19$ from scalability dispersion. As in Panel A, RTS heterogeneity has the biggest contribution to the capital and therefore the $Q$ gap. Likewise, productivity dispersion ends up having the biggest welfare role out of the two again, potentially due to the lack of an expressive Pareto tail under RTS dispersion only. The joint interaction of the two accounts for $15.60$ percentage points, or $48.7%$ of the calibrated gain, such that almost half of the welfare cost of markups under the calibrated baseline arises only when firms differ along both dimensions at once. Understanding what is behind this interaction effect requires splitting a welfare gain into the channels through which wedges lower consumption, which I turn to next.
 
-#v(0.5cm)
+#v(0.375cm)
 == Decomposing the Welfare Cost<sec:welfare_decomp>
-#v(0.2cm)
+#v(0.15cm)
 
 *Welfare Setup.* To investigate the components behind the interaction effect, I define and work with the log of the gain $lambda$ of @eq:lambda_is_C_ratio,
 #math.equation(block:true, $Delta equiv ln(1 + lambda) = ln C^(P E) - ln C^(M E),$)<eq:delta_def>
@@ -452,12 +452,12 @@ The second decomposition asks instead whether the planner gains by reallocating 
 
 Note that the two decompositions are not nested, as the first cuts the gain by which wedges are removed and the second by which inputs are allowed to move. Both, however, sum exactly to the same $Delta$, such that the share of each component in $Delta$ is well defined and the shares add up to one within each decomposition.
 
-#v(0.3cm)
+#v(0.225cm)
 *From the Homogeneous Economy to the Baseline.* In @fig:recal_channels, the welfare gain of each economy is stacked by both decompositions, moving from the homogeneous economy to the calibrated baseline in the steps of Panel B of @tab:welfare_hetero. The homogeneous economy has $Delta = 0.102$, all of it level, since its markups are uniform, and mostly capital ($0.080$), with the remaining $0.022$ coming from materials. Productivity dispersion then adds $0.031$, essentially all of it through dispersion ($0.032$) in Panel A and mostly through misallocation ($0.022$) in Panel B, whereas RTS dispersion adds $0.020$, all of it through the level and mostly through capital ($0.018$), with no dispersion component at all, since the markups of the $alpha$-economy are near uniform as well, as discussed above. Finally, the interaction contributes nearly half ($0.125$) of the final calibrated $Delta = 0.278$, and $70%$ of it comes through dispersion ($0.087$) in Panel A, while capital takes $58%$ of it ($0.073$) under the input decomposition in Panel B.
 
 The calibrated bar then shows the composition of the full gain. The dispersion component accounts for $0.119$ of $Delta$, or $43%$, with the remaining $0.159$ coming from the common level, while the input decomposition attributes $0.054$ to misallocation, $0.048$ to materials and $0.176$, or $63%$, to capital. That is, reallocating the inputs that the market already uses would raise consumption by $5.5%$. This is the counterpart of the fixed-input gains of #cite(<hsieh2009misallocation>, form: "prose"), who find manufacturing TFP gains of $30$–$43%$ from equalizing revenue productivity in the United States, but it is much smaller, since only the dispersion created by markups is removed here, while their measure captures every source of dispersion in revenue productivity. Most of the gain, however, comes from the planner accumulating capital at the Euler rate, which amplifies fixed-input gains as in their exercise, and does so far more here, since the planner also removes the common markup level that equalizing revenue productivity leaves in place. #cite(<restuccia2008policy>, form: "prose") draw a similar distinction, holding aggregate capital fixed to isolate the reallocation effect of distortions, and find that letting capital adjust adds a further output loss through lower accumulation. Since all comparisons are across steady states, the capital component ignores the consumption forgone along the transition to a capital stock more than twice as large, and $lambda$ should be read as an upper bound on the gain net of accumulation.
 
-#v(0.3cm)
+#v(0.225cm)
 #figure(
   block(width: 100%)[
     #align(center, image("figures/orbis/fig_recalibrated_channels_orbis_zipf.pdf", width: 100%))
@@ -473,13 +473,13 @@ A potential explanation comes from the marginal cost @eq:marginal_cost. Holding 
 #math.equation(block:true, $ epsilon_mu equiv frac(d ln y_(j i), d ln mu_(j i)) = - frac(gamma alpha_(j i), alpha_(j i) + gamma (1 - alpha_(j i))),$)<eq:markup_response>
 which rises with $alpha_(j i)$, as the price elasticity of supply increases with returns to scale #cite(<ruzic2023returns>), and diverges as $alpha_(j i)$ approaches $gamma slash (gamma - 1)$, the bound below which the scalability draws are capped. Under constant returns, the elasticity $epsilon_mu$ defined in @eq:markup_response equals the calibrated $gamma = 7.88$ but rises to about $ epsilon_mu = 28$ at $alpha_(j i) = 1.1$, a value well inside the support of $F^alpha$. A given wedge thus withholds far more output when it sits on a highly scalable firm, and the RTS gap of $0.046$ that the calibration matches places such firms at the top of the sales distribution, where Cournot markups are highest. The convexity of @eq:markup_response in $alpha_(j i)$ could also explain why scalability dispersion alone raises the level component, since the average response to removing a common wedge grows with the spread of $alpha$. If the cost of markups is largest where high productivity meets high RTS, it should also depend on how the two are paired across firms, which the calibration disciplines through the RTS gap. The next natural question is then to ask how impactful the alignment/misalignment between productivity and RTS is for the welfare cost of wedges.
 
-#v(0.5cm)
+#v(0.375cm)
 == Sorting and the Cost of Markups<sec:sorting>
-#v(0.2cm)
+#v(0.15cm)
 
 *Sweep.* The interaction in @tab:welfare_hetero shows that the welfare cost of markups depends on productivity and scalability jointly, but it does not show how much it depends on the way the two are paired across firms. To answer this, I hold the calibrated parameters and both marginal distributions fixed and vary only the strength $macron(rho)$ of the rank copula @eq:nu_ladder. The experiment re-solves the economy for values of $macron(rho)$ between $-0.9$ and $+0.9$, keeping $(xi, N, gamma, eta)$, the scalability draws, the anchor $hat(y)$ and the baseline $chi$ at their calibrated values, such that the productivity marginal is preserved in distribution. Additionally, three arrangements permute the calibrated draws within each sector, namely perfect negative and positive rank pairings, labelled $macron(rho) = minus.plus 1$ in @tab:sorting, and a random reassignment that removes any dependence, all of which preserve both marginals exactly. Two features set this experiment apart from @tab:welfare_hetero. First, the arrangements are not recalibrated, such that they no longer match the RTS gap, the Zipf indices or $mu_("cw")$. The sweep therefore measures how the welfare cost responds to the pairing at given primitives, while @tab:welfare_hetero compares economies that agree on the observed moments. Second, the markup decomposition re-solves $U$ at each arrangement's own $mu_("cw")$, such that the level component absorbs any change in aggregate market power and the dispersion component captures the cost of markups differing across firms at a given level.
 
-#v(0.3cm)
+#v(0.225cm)
 #figure(
   block(width: 100%)[
     #set text(size: 9pt)
@@ -538,21 +538,21 @@ Sorting also creates market power. Since aligning scalability with productivity 
   ],
   caption: [Decomposition of the welfare gain from the planner along the copula sweep.],
 )<fig:sorting_decomp>
-#v(0.3cm)
+#v(0.225cm)
 
 *Decomposing Sorting.* I reuse the welfare decomposition machinery from @sec:welfare_decomp, solving the intermediate planner allocations ($U,P E_I, P E_K$) at each arrangement. Since $U$ is re-solved at each arrangement's own $mu_("cw")$, the level component of the markup decomposition in Panel A of @fig:sorting_decomp absorbs the higher markup level, while the dispersion component captures their spread across firms, and the latter rises from zero under strongly negative sorting to $0.12$ at the calibrated point and to about $0.45$ at the top, around half of the total $Delta$. Moving on to Panel B, the misallocation component rises from zero to about $0.2$, or roughly a quarter of $Delta$, since a common markup leaves nothing to reallocate at fixed inputs, while capital remains the largest component throughout, such that sorting raises the cost of markups both by misplacing the inputs already in use and, above all, by holding back the expansion of scalable firms. Up to random assignment, both rises go along with a wider spread of markups and a growing correlation between markups and scalability in @tab:sorting. Beyond it, the correlation falls while the spread keeps widening up to $macron(rho) = +0.6$. Past that point the spread narrows slightly, yet the dispersion component does not decline, since sorting keeps moving inputs towards scalable firms, whose output responds most to a given markup by @eq:markup_response. The cost-weighted mean of $|epsilon_mu|$ rises from $17$ at the calibrated point to $70$ under perfect positive pairing, such that the same markups withhold more output. 
 
 
-#v(0.5cm)
+#v(0.375cm)
 = Conclusion<sec:conclusion>
-#v(0.2cm)
+#v(0.15cm)
 The modern literature on market power usually explains markups by productivity under common returns to scale. I introduce heterogeneity in RTS, measured from Orbis Spain using the #cite(<gandhi2020identification>, form: "prose") estimation method, to an #cite(<atkeson2008pricing>,form:"prose")-style Cournot oligopoly framework, and link it to productivity through a calibrated rank copula. Once firms differ in RTS, the same markup withholds very different amounts of output, so shares and markups alone cannot measure the cost of market power accurately.
 
-Under the baseline calibrated $(alpha,nu)$-economy, I find that the cost of markups $lambda$, namely the welfare gap between the market and a planner that removes every markup, equals $32$ percent, more than double that of the $nu$-economy, which matches the same markup level and nearly the same sales tails with common returns to scale. I find that each dimension of heterogeneity contributes little on its own, with the joint interaction of the two accounting for almost half of the gap, such that productivity and scalability act as complements. The reason is that the two margins play different roles, as productivity drives the large shares and thus the high markups, while scalability determines how much output a given markup withholds, such that markups are most costly at firms that are both productive and scalable.
+Under the baseline calibrated $(alpha,nu)$-economy, I find that the cost of markups $lambda$ equals $32$ percent, more than double that of the $nu$-economy, which matches the same markup level and nearly the same sales tails with common returns to scale. Each dimension of heterogeneity contributes little on its own, with the joint interaction of the two accounting for almost half of the gap, such that productivity and scalability act as complements. The reason is that the two margins play different roles, as productivity drives the large shares and thus the high markups, while scalability determines how much output a given markup withholds, such that markups are most costly at firms that are both productive and scalable.
 
 To investigate the components of this welfare gap, I split it in two separate ways. The first separates the dispersion of markups across firms, which accounts for a substantial share of the gap, from their common aggregate level, which accounts for the larger remainder. The second separates the misallocation of the inputs that the market already uses, which plays only a minor role, from the underuse of materials and capital, which accounts for most of the gap, with capital alone being its largest component. That is, markups in this framework lower welfare mostly by holding back the expansion of scalable firms.
 
-Moving on to sorting, varying only the pairing of scalability and productivity, while holding both marginal distributions fixed, moves $lambda$ across a range far wider than that spanned by any dimension of heterogeneity in @tab:welfare_hetero, with the calibrated economy in the lower part of it. Sorting also creates market power, as aligning scalability with productivity raises the aggregate markup. Under perfect negative pairing, markups sit close to the CES floor, such that the whole welfare gap comes from their common level in the first split and from the underuse of materials and capital in the second. As the pairing turns positive, the dispersion component grows to about half of the total and misallocation to about a quarter, while capital remains the largest component throughout. Past random assignment, however, the correlation between markups and scalability falls, such that the welfare gap keeps rising due to a wider spread of markups and the reallocation of inputs toward scalable firms, whose output responds most to a given markup.
+Moving on to sorting, varying only the pairing of the two margins, while holding both marginal distributions fixed, moves $lambda$ across a range far wider than that spanned by any dimension of heterogeneity in @tab:welfare_hetero, with the calibrated economy in the lower part of it. Sorting also creates market power, as aligning scalability with productivity raises the aggregate markup. Under perfect negative pairing, markups sit close to the CES floor, such that the whole welfare gap comes from their common level in the first split and from the underuse of materials and capital in the second. As the pairing turns positive, the dispersion component grows to about half of the total and misallocation to about a quarter, while capital remains the largest component throughout. Past random assignment, however, the correlation between markups and scalability falls, such that the welfare gap keeps rising due to a wider spread of markups and the reallocation of inputs toward scalable firms, whose output responds most to a given markup.
 
 Some potential caveats qualify these conclusions, however, the first being that the comparison is between steady states, with labor and the number of firms held fixed, such that the transitional costs of reaching the planner's allocation are excluded. Second, scalability and its pairing with productivity are taken as given, while in practice they likely stem from investment in standardization or intangibles #cite(<argente2025scalable>) #cite(<hubmer2025scalable>) #cite(<deridder2024market>), and endogenizing them would be the most natural extension. Finally, the evidence comes from Spain alone, and the results remain sensitive to the choice of output anchor. Nonetheless, the results suggest that the welfare cost of markups depends on the expansion technology of the firms that charge them, such that the same markups are far more costly in an economy where the most productive firms are also the most scalable.
 
@@ -581,10 +581,10 @@ Some potential caveats qualify these conclusions, however, the first being that 
 
 
 = Derivations
-#v(0.8cm)
+#v(0.6cm)
 
 == Demand, Markup and Cost Derivations
-#v(0.2cm)
+#v(0.15cm)
 
 Conditional on market-level expenditure, the CES block in @eq:market_ces implies the demand system in @eq:firm_demand and the market-share expression in @eq:share_def. Under Cournot competition, firm $i$ internalizes the effect of its own quantity on the market price index and hence on its residual demand elasticity. The perceived elasticity can be written as
 #math.equation(block:true, $epsilon_(j i,t)^(-1) = frac(1-s_(j i,t), gamma) + frac(s_(j i,t), eta),$)<eq:perceived_elasticity>
@@ -600,9 +600,9 @@ which exceeds $mu_("cw")^("model")$ whenever $alpha_(j i) < 1$, since it also lo
 
 The cost block follows from two nested Cobb-Douglas cost minimizations, first over capital and labor inside value added, which yields the input ratio in @eq:input_demand and the unit cost @eq:omega, and then over value added and materials, which yields @eq:omega_gross and, through @eq:production, the cost functions @eq:total_cost and @eq:marginal_cost.
 
-#v(0.5cm)
+#v(0.375cm)
 == Planner Derivations<sec:planner_appendix>
-#v(0.2cm)
+#v(0.15cm)
 
 Let the planner's Lagrangian attach multipliers $lambda_t^L$ and $lambda_t^K$ to the aggregate labor and capital constraints and let $psi_(j i,t)$ denote the marginal contribution of one more unit of firm output to the gross composite bundle. The planner's firm-level FOCs are the conditions reported in @eq:planner_labor_foc, @eq:planner_capital_foc, and @eq:planner_materials_foc. Together with @eq:production, they imply
 #math.equation(block:true, numbering: none, $U_C(C_t,L_t) psi_(j i,t) alpha_(j i) phi.alt_v (1-a) frac(y_(j i,t), l_(j i,t)) = lambda_t^L,$)
@@ -611,7 +611,7 @@ Let the planner's Lagrangian attach multipliers $lambda_t^L$ and $lambda_t^K$ to
 The planner keeps the same exogenous sector firm set $A_j$ as the decentralized allocation. Hence the planner derivation needs no additional firm-selection condition: all differences between the market and planner allocations come from markup pricing and the induced allocation of labor, capital, materials, and output.
 
 = Additional Figures and Tables <sec:aditional_figs>
-#v(0.2cm)
+#v(0.15cm)
 
 #figure(
   block(width: 100%)[

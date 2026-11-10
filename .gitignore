@@ -20,6 +20,7 @@ deps/usr/
 deps/src/
 04_Code/__pycache__
 04_Code/steady_state/_spike
+02_Drafts/10_page_version
 04_Code/scripts
 04_Code/out_results
 graphify-out
